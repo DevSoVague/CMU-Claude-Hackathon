@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Who Are You, Really?</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+:root {
+  --ink: #080810;
+  --paper: #f0ebe0;
+  --gold: #d4a843;
+  --amber: #e07b39;
+  --rose: #c45c7a;
+  --teal: #3aada8;
+  --violet: #7c5cbf;
+  --sage: #5a9e6f;
+  --mist: #8fa8bb;
+  --rare: #e8c4f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--ink); color: var(--paper); font-family: 'Space Mono', monospace; min-height: 100vh; overflow-x: hidden; }
+
+#intro {
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 40px; position: relative; overflow: hidden;
+  background: radial-gradient(ellipse at 20% 60%, rgba(212,168,67,0.07) 0%, transparent 55%),
+              radial-gradient(ellipse at 80% 30%, rgba(58,173,168,0.07) 0%, transparent 55%),
+              radial-gradient(ellipse at 55% 80%, rgba(196,92,122,0.05) 0%, transparent 45%);
+}
+.big-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(52px,11vw,104px); font-weight: 300; line-height: 0.95; letter-spacing: -2px; margin-bottom: 28px; animation: fadeUp 1s ease both; }
+.big-title em { color: var(--gold); font-style: italic; }
+.big-title .rose { color: var(--rose); }
+.subtitle { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--mist); margin-bottom: 64px; animation: fadeUp 1s 0.3s ease both; opacity: 0; }
+.start-btn { background: none; border: 1px solid var(--gold); color: var(--gold); font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 4px; text-transform: uppercase; padding: 20px 56px; cursor: pointer; transition: all 0.4s; animation: fadeUp 1s 0.6s ease both; opacity: 0; position: relative; overflow: hidden; }
+.start-btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--gold), var(--amber)); transform: translateX(-100%); transition: transform 0.4s; }
+.start-btn span { position: relative; z-index: 1; }
+.start-btn:hover { color: var(--ink); }
+.start-btn:hover::before { transform: translateX(0); }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+
+#questions { display: none; min-height: 100vh; }
+.progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, var(--gold), var(--rose), var(--teal)); transition: width 0.6s ease; z-index: 100; }
+.question-container { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 60px clamp(28px,9vw,140px); }
+.q-number { font-size: 10px; letter-spacing: 5px; color: var(--amber); text-transform: uppercase; margin-bottom: 36px; opacity: 0; animation: fadeUp 0.6s 0.1s ease forwards; }
+.q-text { font-family: 'Cormorant Garamond', serif; font-size: clamp(30px,5.5vw,58px); font-weight: 300; line-height: 1.25; margin-bottom: 14px; max-width: 820px; opacity: 0; animation: fadeUp 0.6s 0.2s ease forwards; }
+.q-hint { font-size: 11px; color: var(--mist); letter-spacing: 1px; margin-bottom: 52px; opacity: 0; animation: fadeUp 0.6s 0.3s ease forwards; font-style: italic; }
+.answer-area { max-width: 720px; opacity: 0; animation: fadeUp 0.6s 0.4s ease forwards; }
+.answer-area textarea { width: 100%; background: transparent; border: none; border-bottom: 1px solid rgba(212,168,67,0.25); color: var(--paper); font-family: 'Cormorant Garamond', serif; font-size: clamp(18px,2.8vw,26px); font-weight: 300; padding: 16px 0; resize: none; outline: none; min-height: 130px; line-height: 1.7; transition: border-color 0.3s; }
+.answer-area textarea::placeholder { color: rgba(240,235,224,0.18); font-style: italic; }
+.answer-area textarea:focus { border-bottom-color: var(--gold); }
+.next-btn { margin-top: 36px; background: none; border: none; color: var(--teal); font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 4px; text-transform: uppercase; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 14px; transition: gap 0.3s, color 0.3s; }
+.next-btn:hover { gap: 24px; color: var(--gold); }
+.arr { display: inline-block; transition: transform 0.3s; }
+.next-btn:hover .arr { transform: translateX(8px); }
+.error-msg { color: var(--rose); font-size: 11px; margin-top: 14px; display: none; }
+
+#loading { display: none; min-height: 100vh; align-items: center; justify-content: center; flex-direction: column; gap: 36px; text-align: center; padding: 40px; }
+.loading-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(26px,4vw,44px); font-weight: 300; color: var(--gold); animation: breathe 2.5s ease infinite; }
+.loading-phase { font-size: 10px; letter-spacing: 3px; color: var(--mist); text-transform: uppercase; }
+@keyframes breathe { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.98); } }
+.loading-bar { width: 200px; height: 2px; background: rgba(212,168,67,0.15); position: relative; overflow: hidden; }
+.loading-bar::after { content: ''; position: absolute; left: -60%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent, var(--gold), var(--rose), var(--teal), transparent); animation: sweep 1.8s ease infinite; }
+@keyframes sweep { to { left: 100%; } }
+
+#result { display: none; padding: 80px clamp(28px,8vw,120px); max-width: 1200px; margin: 0 auto; }
+.result-header { text-align: center; margin-bottom: 90px; padding-bottom: 70px; border-bottom: 1px solid rgba(212,168,67,0.15); }
+.eyebrow { font-size: 10px; letter-spacing: 5px; color: var(--amber); text-transform: uppercase; margin-bottom: 20px; }
+.archetype-badge { display: inline-block; font-size: 9px; letter-spacing: 4px; text-transform: uppercase; padding: 6px 16px; border: 1px solid; border-radius: 2px; margin-bottom: 20px; }
+.archetype-badge.rare { color: var(--rare); border-color: var(--rare); background: rgba(232,196,240,0.05); }
+.archetype-badge.common { color: var(--mist); border-color: rgba(143,168,187,0.4); }
+.result-header h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(40px,7vw,80px); font-weight: 300; line-height: 1.1; color: var(--gold); }
+.result-section { margin-bottom: 72px; opacity: 0; transform: translateY(32px); transition: all 0.9s ease; }
+.result-section.visible { opacity: 1; transform: translateY(0); }
+.section-label { font-size: 10px; letter-spacing: 5px; text-transform: uppercase; margin-bottom: 24px; display: flex; align-items: center; gap: 14px; }
+.section-label::after { content: ''; flex: 1; height: 1px; background: currentColor; opacity: 0.2; }
+.label-you { color: var(--rose); }
+.label-born { color: var(--teal); }
+.label-gap { color: var(--violet); }
+.label-step { color: var(--sage); }
+.section-text { font-family: 'Cormorant Garamond', serif; font-size: clamp(18px,2.2vw,24px); font-weight: 300; line-height: 1.9; color: var(--paper); }
+.section-text p { margin-bottom: 18px; }
+.step-text { font-family: 'Cormorant Garamond', serif; font-size: clamp(20px,2.8vw,30px); font-weight: 300; line-height: 1.7; color: var(--sage); padding: 32px 28px; border-left: 3px solid var(--sage); }
+
+/* reflect strip */
+.reflect-strip { margin: 0 0 72px; padding: 28px 36px; background: rgba(212,168,67,0.04); border: 1px solid rgba(212,168,67,0.12); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.reflect-label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--amber); flex-shrink: 0; }
+.reflect-text { font-family: 'Cormorant Garamond', serif; font-size: 16px; font-style: italic; color: rgba(240,235,224,0.65); flex: 1; line-height: 1.6; min-width: 200px; min-height: 0; }
+.reflect-text:empty { display: none; }
+.reflect-thinking { font-size: 9px; letter-spacing: 3px; color: var(--mist); text-transform: uppercase; animation: breathe 2s ease infinite; }
+
+/* chat more button */
+.chat-more-btn { display: inline-flex; align-items: center; gap: 10px; background: none; border: 1px solid var(--teal); color: var(--teal); font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; padding: 14px 28px; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; text-decoration: none; }
+.chat-more-btn::before { content: ''; position: absolute; inset: 0; background: var(--teal); transform: translateX(-100%); transition: transform 0.3s; }
+.chat-more-btn span { position: relative; z-index: 1; }
+.chat-more-btn:hover { color: var(--ink); }
+.chat-more-btn:hover::before { transform: translateX(0); }
+
+/* graph */
+.graph-wrapper { margin-top: 90px; padding-top: 70px; border-top: 1px solid rgba(240,235,224,0.08); }
+.graph-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(32px,5vw,56px); font-weight: 300; text-align: center; margin-bottom: 12px; color: var(--paper); }
+.graph-subtitle { text-align: center; font-size: 10px; letter-spacing: 4px; color: var(--mist); text-transform: uppercase; margin-bottom: 40px; }
+#life-graph { width: 100%; height: 600px; background: rgba(255,255,255,0.015); border-radius: 8px; border: 1px solid rgba(212,168,67,0.08); position: relative; overflow: hidden; }
+#life-graph svg { width: 100%; height: 100%; }
+.graph-analysing { display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 20px; }
+.graph-analysing p { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--mist); animation: breathe 2s ease infinite; }
+
+/* node panel */
+.node-panel { position: fixed; right: 0; top: 0; height: 100vh; width: min(480px, 100vw); background: #0c0c18; border-left: 1px solid rgba(212,168,67,0.15); padding: 48px 36px; overflow-y: auto; transform: translateX(100%); transition: transform 0.5s cubic-bezier(0.16,1,0.3,1); z-index: 1000; }
+.node-panel.open { transform: translateX(0); }
+.panel-close { position: absolute; top: 20px; right: 20px; background: none; border: none; color: var(--mist); font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; }
+.panel-close:hover { color: var(--paper); }
+.panel-type { font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: var(--amber); margin-bottom: 12px; }
+.panel-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(24px,3vw,36px); font-weight: 300; color: var(--gold); margin-bottom: 8px; line-height: 1.2; }
+.panel-quote { font-family: 'Cormorant Garamond', serif; font-size: 14px; font-style: italic; color: var(--mist); margin-bottom: 32px; padding-left: 16px; border-left: 2px solid rgba(212,168,67,0.3); line-height: 1.7; }
+.panel-loading { font-size: 10px; letter-spacing: 3px; color: var(--mist); text-transform: uppercase; animation: breathe 2s ease infinite; }
+.panel-content { font-family: 'Cormorant Garamond', serif; font-size: 16px; font-weight: 300; line-height: 1.9; color: var(--paper); }
+.panel-content p { margin-bottom: 16px; }
+.faculty-voice { margin-top: 28px; padding-top: 20px; border-top: 1px solid rgba(240,235,224,0.08); }
+.faculty-label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--violet); margin-bottom: 12px; }
+.faculty-text { font-family: 'Cormorant Garamond', serif; font-size: 15px; font-style: italic; color: rgba(240,235,224,0.7); line-height: 1.8; }
+
+.counselor-section { margin-top: 80px; padding: 48px; background: rgba(124,92,191,0.05); border: 1px solid rgba(124,92,191,0.15); border-radius: 4px; }
+.counselor-label { font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: var(--violet); margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+.counselor-label::after { content: ''; flex: 1; height: 1px; background: var(--violet); opacity: 0.2; }
+.counselor-text { font-family: 'Cormorant Garamond', serif; font-size: 16px; font-weight: 300; line-height: 1.9; color: rgba(240,235,224,0.6); }
+.starter-item { display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-start; margin-top: 8px; }
+.starter-num { font-size: 9px; color: var(--violet); margin-top: 4px; flex-shrink: 0; }
+.starter-q { font-family: 'Cormorant Garamond', serif; font-size: 15px; font-style: italic; color: rgba(240,235,224,0.5); line-height: 1.6; }
+
+.action-row { display: flex; gap: 16px; margin-top: 80px; flex-wrap: wrap; align-items: center; justify-content: center; }
+.restart-btn { background: none; border: 1px solid rgba(240,235,224,0.15); color: var(--mist); font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 4px; text-transform: uppercase; padding: 16px 40px; cursor: pointer; transition: all 0.3s; }
+.restart-btn:hover { border-color: var(--paper); color: var(--paper); }
+
+body::after { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E"); pointer-events: none; opacity: 0.5; z-index: 9999; }
+
+/* ── INTAKE SCREEN ── */
+#intake { display:none; min-height:100vh; padding:60px clamp(28px,9vw,140px); flex-direction:column; justify-content:center; }
+.intake-title { font-family:'Cormorant Garamond',serif; font-size:clamp(32px,5vw,52px); font-weight:300; color:var(--paper); margin-bottom:8px; }
+.intake-sub { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--mist); margin-bottom:48px; }
+.intake-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; max-width:720px; margin-bottom:32px; }
+.intake-field { display:flex; flex-direction:column; gap:8px; }
+.intake-field.full { grid-column:1/-1; }
+.intake-label { font-size:9px; letter-spacing:4px; text-transform:uppercase; color:var(--amber); }
+.intake-input { background:transparent; border:none; border-bottom:1px solid rgba(212,168,67,0.25); color:var(--paper); font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:300; padding:10px 0; outline:none; transition:border-color 0.3s; }
+.intake-input:focus { border-bottom-color:var(--gold); }
+.intake-input::placeholder { color:rgba(240,235,224,0.2); font-style:italic; }
+.intake-scraping { font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--sage); animation:breathe 2s ease infinite; display:none; margin-top:12px; }
+.intake-btn { background:none; border:1px solid var(--gold); color:var(--gold); font-family:'Space Mono',monospace; font-size:11px; letter-spacing:4px; text-transform:uppercase; padding:18px 48px; cursor:pointer; transition:all 0.4s; position:relative; overflow:hidden; margin-top:16px; }
+.intake-btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,var(--gold),var(--amber)); transform:translateX(-100%); transition:transform 0.4s; }
+.intake-btn span { position:relative; z-index:1; }
+.intake-btn:hover { color:var(--ink); }
+.intake-btn:hover::before { transform:translateX(0); }
+
+/* ── HEATMAP CANVAS ── */
+#heatmap-canvas { position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0; transition:opacity 1s; }
+#heatmap-canvas.active { opacity:1; }
+
+/* ── ILLUSION QUESTIONS ── */
+.illusion-wrap { background:#f5f0e8; border-radius:16px; padding:16px; margin-bottom:20px; display:flex; justify-content:center; align-items:center; min-height:200px; }
+.illusion-wrap svg { max-width:100%; height:auto; }
+.options-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; max-width:720px; }
+.opt-card { background:rgba(255,255,255,0.04); border:1px solid rgba(240,235,224,0.1); border-radius:12px; padding:14px 16px; color:var(--paper); font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:300; cursor:pointer; text-align:left; transition:all 0.2s; display:flex; align-items:center; gap:10px; }
+.opt-card:hover { background:rgba(212,168,67,0.08); border-color:rgba(212,168,67,0.4); }
+.opt-card.selected { background:rgba(212,168,67,0.12); border-color:var(--gold); }
+.opt-icon-big { font-size:22px; flex-shrink:0; }
+.two-img-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:12px; max-width:720px; }
+.img-choice { border-radius:14px; overflow:hidden; cursor:pointer; border:2px solid transparent; transition:all 0.25s; position:relative; background:#f5f0e8; }
+.img-choice:hover { border-color:rgba(212,168,67,0.5); transform:scale(1.01); }
+.img-choice.selected { border-color:var(--gold); box-shadow:0 0 24px rgba(212,168,67,0.3); }
+.img-choice svg { width:100%; display:block; }
+.img-choice-label { background:rgba(8,8,16,0.8); color:var(--paper); font-size:11px; letter-spacing:2px; text-transform:uppercase; text-align:center; padding:10px 8px; font-family:'Space Mono',monospace; }
+
+.node circle { cursor: pointer; }
+.link { fill: none; stroke-opacity: 0.35; }
+.sessions-label { font-size:9px; letter-spacing:4px; text-transform:uppercase; color:var(--mist); margin-bottom:16px; opacity:0.5; }
+.session-pills { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:640px; margin:0 auto; }
+.session-pill { background:none; border:1px solid rgba(212,168,67,0.2); color:var(--mist); font-family:'Space Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; padding:10px 18px; cursor:pointer; transition:all 0.3s; }
+.session-pill:hover { border-color:var(--gold); color:var(--gold); }
+.pill-archetype { display:block; font-family:'Cormorant Garamond',serif; font-size:14px; font-style:italic; color:var(--gold); font-weight:300; letter-spacing:0; text-transform:none; margin-top:3px; opacity:0.8; }
+.pill-date { display:block; font-size:8px; opacity:0.4; margin-top:2px; }
+
+/* ── VISUAL PERSONALITY (what your eyes reveal) ── */
+.vp-result-section { margin-bottom:72px; }
+.vp-header { display:flex; align-items:center; gap:20px; margin-bottom:28px; flex-wrap:wrap; }
+.vp-aura { width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:40px; flex-shrink:0; animation:pulseAura 3s ease-in-out infinite; }
+@keyframes pulseAura { 0%,100%{ box-shadow:0 0 20px rgba(124,92,191,0.3) } 50%{ box-shadow:0 0 42px rgba(196,92,122,0.5) } }
+.vp-type-label { font-size:9px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--rose); margin-bottom:6px; }
+.vp-type-title { font-family:'Cormorant Garamond',serif; font-size:clamp(26px,3.5vw,40px); font-weight:400; color:var(--paper); line-height:1.2; }
+.vp-tagline { font-family:'Cormorant Garamond',serif; font-size:17px; font-style:italic; color:rgba(240,235,224,0.7); margin-bottom:20px; line-height:1.8; }
+.traits-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:28px; }
+.trait-pill { background:rgba(124,92,191,0.18); border:1px solid rgba(124,92,191,0.4); border-radius:30px; padding:6px 16px; font-family:'Space Mono',monospace; font-size:10px; letter-spacing:1px; color:#c4b5fd; text-transform:uppercase; }
+.vp-boxes { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:22px; }
+.vp-box { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:20px; }
+.vp-box-icon { font-size:22px; margin-bottom:8px; }
+.vp-box-title { font-size:9px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:rgba(240,235,224,0.5); margin-bottom:8px; }
+.vp-box-text { font-family:'Cormorant Garamond',serif; font-size:16px; color:var(--paper); font-weight:300; line-height:1.6; }
+.vp-box.wide { grid-column:1/-1; }
+.suppress-box { background:linear-gradient(135deg,rgba(124,92,191,0.12),rgba(196,92,122,0.08)); border:1px solid rgba(124,92,191,0.25); border-radius:8px; padding:22px 24px; margin-bottom:22px; }
+.suppress-title { font-size:10px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:#a78bfa; margin-bottom:10px; }
+.suppress-text { font-family:'Cormorant Garamond',serif; font-size:16px; color:rgba(240,235,224,0.85); line-height:1.7; font-weight:300; }
+@media (max-width:640px) { .vp-boxes { grid-template-columns:1fr; } }
+
+/* ── COMBINED ASSESSMENT (full picture) ── */
+.combined-section { margin:60px 0 72px; padding:44px; background:linear-gradient(135deg,rgba(124,92,191,0.05),rgba(196,92,122,0.03),rgba(212,168,67,0.04)); border:1px solid rgba(212,168,67,0.12); border-radius:8px; }
+.combined-title { font-family:'Cormorant Garamond',serif; font-size:clamp(24px,3.5vw,40px); font-weight:300; color:var(--gold); margin-bottom:8px; }
+.combined-subtitle { font-size:10px; letter-spacing:4px; text-transform:uppercase; color:var(--mist); margin-bottom:32px; }
+.combined-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:28px; }
+.combined-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:24px; }
+.combined-card-label { font-size:9px; letter-spacing:4px; text-transform:uppercase; margin-bottom:12px; }
+.combined-card-label.deep { color:var(--gold); }
+.combined-card-label.visual { color:var(--rose); }
+.combined-card-name { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:400; margin-bottom:8px; color:var(--paper); }
+.combined-card-desc { font-family:'Cormorant Garamond',serif; font-size:15px; font-style:italic; color:rgba(240,235,224,0.6); line-height:1.7; font-weight:300; }
+.synthesis-box { background:rgba(212,168,67,0.05); border-left:3px solid var(--gold); padding:22px 26px; border-radius:0 6px 6px 0; }
+.synthesis-label { font-size:9px; letter-spacing:4px; text-transform:uppercase; color:var(--amber); margin-bottom:12px; }
+.synthesis-text { font-family:'Cormorant Garamond',serif; font-size:17px; font-style:italic; color:rgba(240,235,224,0.82); line-height:1.85; font-weight:300; }
+@media (max-width:640px) { .combined-grid { grid-template-columns:1fr; } }
+
+/* ── ROADMAP ── */
+.roadmap-section { margin-top:100px; padding-top:70px; border-top:1px solid rgba(240,235,224,0.08); }
+.roadmap-title { font-family:'Cormorant Garamond',serif; font-size:clamp(30px,5vw,54px); font-weight:300; text-align:center; margin-bottom:10px; color:var(--paper); }
+.roadmap-subtitle { text-align:center; font-size:10px; letter-spacing:4px; color:var(--mist); text-transform:uppercase; margin-bottom:40px; }
+#roadmap-canvas { width:100%; height:780px; position:relative; border-radius:14px; overflow:hidden; cursor:pointer; background:#87ceeb; }
+#roadmap-svg { width:100%; height:100%; display:block; }
+.roadmap-hint { text-align:center; font-size:10px; color:var(--mist); margin-top:16px; letter-spacing:2px; text-transform:uppercase; opacity:0.7; }
+
+/* Stage detail panel (slides up from bottom) */
+.stage-panel { position:fixed; bottom:0; left:0; right:0; background:linear-gradient(180deg,rgba(10,8,15,0.97),#0a080f); border-top:1px solid rgba(212,168,67,0.2); padding:32px 40px 48px; transform:translateY(100%); transition:transform 0.5s cubic-bezier(0.16,1,0.3,1); z-index:2000; max-height:55vh; overflow-y:auto; }
+.stage-panel.open { transform:translateY(0); }
+.stage-panel-close { position:absolute; top:14px; right:20px; background:none; border:none; color:var(--mist); font-size:20px; cursor:pointer; font-family:'Space Mono',monospace; }
+.stage-panel-close:hover { color:var(--paper); }
+.stage-panel-number { font-size:9px; letter-spacing:5px; text-transform:uppercase; color:var(--amber); margin-bottom:8px; }
+.stage-panel-title { font-family:'Cormorant Garamond',serif; font-size:clamp(22px,3vw,34px); font-weight:300; color:var(--gold); margin-bottom:16px; }
+.stage-panel-content { font-family:'Cormorant Garamond',serif; font-size:17px; font-weight:300; line-height:1.85; color:rgba(240,235,224,0.82); max-width:760px; }
+.stage-panel-action { margin-top:20px; padding:16px 20px; background:rgba(90,158,111,0.08); border-left:3px solid var(--sage); font-family:'Cormorant Garamond',serif; font-size:15px; color:var(--sage); line-height:1.7; }
+
+/* ── PERSISTENT PRANCING DOG (chrome pet extension style) ── */
+#pet-dog {
+  position: fixed;
+  bottom: 0px;
+  left: 0;
+  width: 60px;
+  height: 60px;
+  z-index: 9998;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.12s ease-out;
+  will-change: transform, left;
+  user-select: none;
+}
+#pet-dog svg { width: 100%; height: 100%; overflow: visible; display:block; }
+#pet-dog .pet-body-bounce { transform-origin: 30px 40px; }
+#pet-dog.flipped svg { transform: scaleX(-1); }
+#pet-dog .pet-bubble {
+  position: absolute;
+  bottom: 58px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+  background: rgba(8,8,16,0.92);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  border-radius: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(.4,2,.6,1);
+  opacity: 0;
+}
+#pet-dog .pet-bubble.show {
+  transform: translateX(-50%) scale(1);
+  opacity: 1;
+}
+@media (max-width: 640px) {
+  #pet-dog { width: 48px; height: 48px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="heatmap-canvas"></canvas>
+
+<!-- ── PERSISTENT PRANCING DOG ── -->
+<div id="pet-dog" title="Your companion — click to pet!">
+  <div class="pet-bubble" id="pet-bubble">woof!</div>
+  <svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <g class="pet-body-bounce">
+      <!-- shadow -->
+      <ellipse cx="30" cy="54" rx="18" ry="3" fill="rgba(0,0,0,0.25)"/>
+      <!-- tail -->
+      <path id="pet-tail" d="M 12,34 Q 2,24 8,14" stroke="#a07850" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <!-- body -->
+      <ellipse cx="30" cy="38" rx="18" ry="13" fill="#c8a882"/>
+      <!-- back legs (animated) -->
+      <rect id="pet-leg-bl" x="16" y="46" width="5" height="10" rx="2" fill="#a07850"/>
+      <rect id="pet-leg-br" x="24" y="46" width="5" height="10" rx="2" fill="#a07850"/>
+      <!-- front legs (animated) -->
+      <rect id="pet-leg-fl" x="34" y="46" width="5" height="10" rx="2" fill="#a07850"/>
+      <rect id="pet-leg-fr" x="41" y="46" width="5" height="10" rx="2" fill="#a07850"/>
+      <!-- head -->
+      <circle cx="44" cy="28" r="12" fill="#c8a882"/>
+      <!-- ear -->
+      <ellipse cx="50" cy="19" rx="6" ry="8" fill="#a07850" transform="rotate(15 50 19)"/>
+      <!-- snout -->
+      <ellipse cx="52" cy="30" rx="6" ry="4" fill="#d9be99"/>
+      <!-- eye -->
+      <circle cx="48" cy="25" r="2.2" fill="#1a1010"/>
+      <circle cx="48.7" cy="24.3" r="0.7" fill="white"/>
+      <!-- nose -->
+      <ellipse cx="56" cy="29" rx="2" ry="1.6" fill="#3d1010"/>
+      <!-- mouth -->
+      <path d="M 52,32 Q 54,34 56,32" stroke="#3d1010" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+    </g>
+  </svg>
+</div>
+
+<!-- ── STAGE PANEL (for roadmap) ── -->
+<div class="stage-panel" id="stage-panel">
+  <button class="stage-panel-close" onclick="closeStagePanel()">×</button>
+  <div id="stage-panel-inner"></div>
+</div>
+
+<div id="intro">
+  <h1 class="big-title">Who are<br>you, <em>really?</em><br><span class="rose">Really.</span></h1>
+  <p class="subtitle">A mirror you have never looked into</p>
+  <button class="start-btn" onclick="showIntake()"><span>Begin the journey</span></button>
+  <div id="sessions-loader" style="margin-top:56px;opacity:0;transition:opacity 0.6s;"></div>
+</div>
+
+<div id="intake">
+  <p class="intake-title">Before we begin</p>
+  <p class="intake-sub">Tell us about you — we will find what you have built</p>
+  <div class="intake-grid">
+    <div class="intake-field full">
+      <span class="intake-label">Full Name</span>
+      <input class="intake-input" id="intake-name" type="text" placeholder="Your full name...">
+    </div>
+    <div class="intake-field">
+      <span class="intake-label">GitHub (optional)</span>
+      <input class="intake-input" id="intake-github" type="text" placeholder="github.com/yourhandle">
+    </div>
+    <div class="intake-field">
+      <span class="intake-label">Portfolio / Resume URL (optional)</span>
+      <input class="intake-input" id="intake-url1" type="text" placeholder="https://yoursite.com">
+    </div>
+    <div class="intake-field">
+      <span class="intake-label">LinkedIn URL (optional)</span>
+      <input class="intake-input" id="intake-url2" type="text" placeholder="linkedin.com/in/yourname">
+    </div>
+    <div class="intake-field">
+      <span class="intake-label">Any other link (optional)</span>
+      <input class="intake-input" id="intake-url3" type="text" placeholder="Any public link about you">
+    </div>
+  </div>
+  <p class="intake-scraping" id="intake-scraping" style="display:none;">✦ Searching GitHub and your links...</p>
+  <button class="intake-btn" onclick="submitIntake()"><span>Continue →</span></button>
+</div>
+
+<div id="scrape-banner" style="display:none;position:fixed;bottom:20px;right:24px;font-family:'Space Mono',monospace;font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--sage);background:rgba(8,8,16,0.9);border:1px solid rgba(90,158,111,0.25);padding:8px 16px;border-radius:2px;z-index:100;animation:breathe 2s ease infinite;">
+  ✦ Scraping your public profile...
+</div>
+
+<div id="questions">
+  <div class="progress-bar" id="progress"></div>
+  <div id="question-area"></div>
+</div>
+
+<div id="loading">
+  <p class="loading-title">Listening to everything you just said...</p>
+  <p class="loading-phase" id="loading-phase">Extracting what matters</p>
+  <div class="loading-bar"></div>
+</div>
+
+<div id="result"></div>
+
+<div class="node-panel" id="node-panel">
+  <button class="panel-close" onclick="closePanel()">x close</button>
+  <div id="panel-inner"></div>
+</div>
+
+<script>
+// ── HEATMAP ──
+var heatCanvas = document.getElementById('heatmap-canvas');
+var heatCtx = heatCanvas ? heatCanvas.getContext('2d') : null;
+var heatBlobs = [];
+var heatAnimFrame = null;
+
+var EMOTION_COLORS = {
+  joy:     [212,168,67],   // gold
+  fear:    [124,92,191],   // violet
+  anger:   [196,92,122],   // rose
+  sadness: [74,143,196],   // sky
+  love:    [224,123,57],   // amber
+  peace:   [90,158,111],   // sage
+  wonder:  [58,173,168],   // teal
+};
+var EMOTION_WORDS = {
+  joy:     ['happy','joy','love','wonderful','beautiful','excited','amazing','great','fun','laugh','smile','wonderful','delight','thrill','passion'],
+  fear:    ['afraid','fear','scary','worried','anxious','nervous','panic','dread','terror','risk','danger','lost','uncertain'],
+  anger:   ['angry','injustice','wrong','hate','unfair','rage','frustrated','broken','failed','betrayed','hurt','never','cant'],
+  sadness: ['sad','lost','miss','gone','never','gave up','left','alone','empty','disappointed','regret','wish'],
+  love:    ['love','care','family','friend','together','belong','connect','relationship','bond','trust','partner'],
+  peace:   ['calm','peace','quiet','rest','still','breath','slow','gentle','soft','nature','garden','home','simple'],
+  wonder:  ['dream','imagine','create','build','discover','explore','invent','future','possible','magic','new','wonder'],
+};
+
+function detectEmotion(text) {
+  var lower = text.toLowerCase();
+  var scores = {};
+  for (var em in EMOTION_WORDS) {
+    scores[em] = 0;
+    EMOTION_WORDS[em].forEach(function(w){ if(lower.indexOf(w) > -1) scores[em]++; });
+  }
+  var best = 'wonder', bestScore = 0;
+  for (var e in scores) { if(scores[e] > bestScore){ bestScore = scores[e]; best = e; } }
+  return best;
+}
+
+function addHeatBlob(emotion) {
+  if(!heatCtx) return;
+  heatCanvas.width  = window.innerWidth;
+  heatCanvas.height = window.innerHeight;
+  var col = EMOTION_COLORS[emotion] || EMOTION_COLORS.wonder;
+  heatBlobs.push({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    r: 80 + Math.random() * 120,
+    color: col,
+    alpha: 0,
+    targetAlpha: 0.12 + Math.random() * 0.1,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
+  });
+  heatCanvas.classList.add('active');
+  if(!heatAnimFrame) animateHeat();
+}
+
+function animateHeat() {
+  heatCtx.clearRect(0, 0, heatCanvas.width, heatCanvas.height);
+  heatBlobs.forEach(function(b) {
+    b.alpha += (b.targetAlpha - b.alpha) * 0.03;
+    b.x += b.vx; b.y += b.vy;
+    var g = heatCtx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+    g.addColorStop(0, 'rgba(' + b.color[0] + ',' + b.color[1] + ',' + b.color[2] + ',' + b.alpha + ')');
+    g.addColorStop(1, 'rgba(' + b.color[0] + ',' + b.color[1] + ',' + b.color[2] + ',0)');
+    heatCtx.fillStyle = g;
+    heatCtx.beginPath();
+    heatCtx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    heatCtx.fill();
+  });
+  heatAnimFrame = requestAnimationFrame(animateHeat);
+}
+
+window.addEventListener('resize', function() {
+  if(heatCanvas){ heatCanvas.width = window.innerWidth; heatCanvas.height = window.innerHeight; }
+});
+
+// ── ILLUSION SVGs ──
+var ILLUSIONS = {
+  oldyoung: '<svg viewBox="0 0 300 340" xmlns="http://www.w3.org/2000/svg" width="260" height="300"><rect width="300" height="340" fill="#f5f0e8"/><ellipse cx="150" cy="290" rx="90" ry="60" fill="#3d2b1a"/><rect x="130" y="210" width="40" height="40" fill="#3d2b1a"/><ellipse cx="150" cy="185" rx="55" ry="65" fill="#c8a882"/><ellipse cx="150" cy="125" rx="58" ry="38" fill="#3d2b1a"/><path d="M110 205 Q100 230 115 245 Q135 260 150 255 Q165 260 185 245 Q200 230 190 205" fill="#c8a882"/><path d="M108 195 Q88 212 93 232 Q100 243 118 240" fill="none" stroke="#7a5c3a" stroke-width="2.5" stroke-linecap="round"/><ellipse cx="190" cy="175" rx="14" ry="10" fill="#e8d8c0"/><ellipse cx="193" cy="175" rx="9" ry="7" fill="#3d2b1a"/><path d="M125 235 Q150 248 175 235" fill="none" stroke="#8b4a3a" stroke-width="3" stroke-linecap="round"/><path d="M155 148 Q170 140 185 148" fill="none" stroke="#3d2b1a" stroke-width="3" stroke-linecap="round"/><text x="150" y="328" text-anchor="middle" font-family="serif" font-size="12" fill="#7a5c3a">Two faces — look carefully</text></svg>',
+  duckrabbit: '<svg viewBox="0 0 320 260" xmlns="http://www.w3.org/2000/svg" width="280" height="220"><rect width="320" height="260" fill="#f5f0e8"/><ellipse cx="155" cy="130" rx="80" ry="75" fill="#3d2b1a"/><ellipse cx="105" cy="52" rx="18" ry="48" fill="#3d2b1a" transform="rotate(-8,105,52)"/><ellipse cx="140" cy="45" rx="18" ry="52" fill="#3d2b1a" transform="rotate(5,140,45)"/><ellipse cx="162" cy="135" rx="72" ry="68" fill="#c8a882"/><path d="M228 118 Q265 128 258 148 Q248 158 228 148 Z" fill="#e8a030"/><circle cx="148" cy="108" r="14" fill="#fff"/><circle cx="150" cy="110" r="9" fill="#1a1010"/><circle cx="154" cy="106" r="3" fill="#fff"/><text x="160" y="236" text-anchor="middle" font-family="serif" font-size="12" fill="#7a5c3a">Rabbit or Duck?</text></svg>',
+  vasefaces: '<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" width="260" height="260"><rect width="300" height="300" fill="#1a1010"/><path d="M0,0 L0,300 L80,300 Q60,275 58,255 Q55,235 65,215 Q80,195 82,175 Q85,155 72,135 Q60,120 62,100 Q65,75 80,55 Q90,38 95,20 L95,0 Z" fill="#c8a030"/><path d="M300,0 L300,300 L220,300 Q240,275 242,255 Q245,235 235,215 Q220,195 218,175 Q215,155 228,135 Q240,120 238,100 Q235,75 220,55 Q210,38 205,20 L205,0 Z" fill="#c8a030"/><path d="M95,0 Q105,38 112,90 Q108,118 100,138 Q88,162 88,180 Q100,218 118,262 Q120,278 120,300 L180,300 Q182,262 200,218 Q212,200 212,180 Q212,162 200,138 Q192,118 188,90 Q195,38 205,0 Z" fill="#f5f0e8"/><text x="150" y="292" text-anchor="middle" font-family="serif" font-size="12" fill="#c8a030">Vase or Two Faces?</text></svg>',
+  arrows: '<svg viewBox="0 0 300 240" xmlns="http://www.w3.org/2000/svg" width="280" height="220"><rect width="300" height="240" fill="#f5f0e8" rx="16"/><line x1="30" y1="70" x2="240" y2="70" stroke="#3d2b1a" stroke-width="5" stroke-linecap="round"/><path d="M240,55 L265,70 L240,85" fill="#3d2b1a"/><line x1="270" y1="140" x2="60" y2="140" stroke="#3d2b1a" stroke-width="5" stroke-linecap="round"/><path d="M60,125 L35,140 L60,155" fill="#3d2b1a"/><line x1="60" y1="195" x2="240" y2="195" stroke="#8b4a3a" stroke-width="4" stroke-dasharray="8,6" stroke-linecap="round"/><path d="M240,183 L262,195 L240,207" fill="#8b4a3a"/><path d="M60,183 L38,195 L60,207" fill="#8b4a3a"/><text x="150" y="228" text-anchor="middle" font-family="serif" font-size="12" fill="#7a5c3a">Which arrow first?</text></svg>',
+  space: '<svg viewBox="0 0 280 200" xmlns="http://www.w3.org/2000/svg" width="280" height="180"><rect width="280" height="200" fill="#060918" rx="12"/><circle cx="140" cy="90" r="45" fill="#1e3a6e"/><circle cx="140" cy="90" r="28" fill="#3b6bc4"/><ellipse cx="140" cy="90" rx="70" ry="14" fill="none" stroke="#a78bfa" stroke-width="4" opacity=".7"/><circle cx="30" cy="25" r="2" fill="white" opacity=".9"/><circle cx="220" cy="30" r="2" fill="white"/><circle cx="250" cy="60" r="1.5" fill="white" opacity=".7"/><ellipse cx="55" cy="120" rx="30" ry="18" fill="#7c3aed" opacity=".3"/></svg>',
+  forest: '<svg viewBox="0 0 280 200" xmlns="http://www.w3.org/2000/svg" width="280" height="180"><rect width="280" height="200" fill="#c8e6a0" rx="12"/><rect width="280" height="90" fill="#87ceeb" rx="12"/><rect x="0" y="150" width="280" height="50" fill="#5d4037"/><rect x="0" y="148" width="280" height="10" fill="#388e3c"/><polygon points="40,90 70,30 100,90" fill="#2e7d32"/><polygon points="160,90 190,25 220,90" fill="#2e7d32"/><polygon points="10,148 50,60 90,148" fill="#1b5e20"/><polygon points="100,148 145,50 190,148" fill="#2e7d32"/><polygon points="190,148 230,65 270,148" fill="#1b5e20"/><circle cx="230" cy="38" r="22" fill="#fff176"/></svg>',
+  alone: '<svg viewBox="0 0 280 200" xmlns="http://www.w3.org/2000/svg" width="280" height="180"><rect width="280" height="200" fill="#e8d5b7" rx="12"/><rect width="280" height="130" fill="#ff8c42" rx="12"/><rect y="135" width="280" height="65" fill="#c8a882"/><rect x="78" y="138" width="124" height="8" fill="#5d4037" rx="3"/><circle cx="140" cy="108" r="13" fill="#3d2b1a"/><rect x="128" y="120" width="24" height="18" fill="#3d2b1a" rx="4"/><circle cx="140" cy="55" r="30" fill="#fff176" opacity=".85"/><circle cx="140" cy="72" r="30" fill="#ff8c42"/></svg>',
+  friends: '<svg viewBox="0 0 280 200" xmlns="http://www.w3.org/2000/svg" width="280" height="180"><rect width="280" height="200" fill="#1a0a2e" rx="12"/><circle cx="40" cy="20" r="5" fill="#f59e0b" opacity=".9"/><circle cx="140" cy="20" r="5" fill="#10b981" opacity=".9"/><circle cx="240" cy="20" r="5" fill="#f59e0b" opacity=".9"/><rect y="165" width="280" height="35" fill="#2d1a5e"/><circle cx="85" cy="105" r="16" fill="#c8a882"/><rect x="68" y="120" width="34" height="45" fill="#6c2cff" rx="6"/><circle cx="140" cy="98" r="18" fill="#a0785a"/><rect x="122" y="115" width="36" height="50" fill="#ff2c78" rx="6"/><circle cx="195" cy="105" r="16" fill="#c8a882"/><rect x="178" y="120" width="34" height="45" fill="#059669" rx="6"/><circle cx="240" cy="95" r="18" fill="#ef4444" opacity=".8"/><circle cx="35" cy="92" r="16" fill="#3b82f6" opacity=".8"/></svg>'
+};
+
+// ── INTAKE & SCRAPING ──
+var scrapedContext = '';
+var userProfile = { name:'', github:'', links:[] };
+
+function showIntake() {
+  document.getElementById('intro').style.display = 'none';
+  document.getElementById('intake').style.display = 'flex';
+}
+function submitIntake() {
+  var name   = document.getElementById('intake-name').value.trim();
+  var github = document.getElementById('intake-github').value.trim();
+  var url1   = document.getElementById('intake-url1').value.trim();
+  var url2   = document.getElementById('intake-url2').value.trim();
+  var url3   = document.getElementById('intake-url3').value.trim();
+  var links  = [url1, url2, url3].filter(function(u){ return u; });
+
+  userProfile = { name: name, github: github, links: links };
+
+  // Fire scraping immediately in background — don't block on it
+  if(github || links.length) {
+    document.getElementById('scrape-banner').style.display = 'block';
+    fetch('/api/scrape', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name: name, github: github, links: links })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      scrapedContext = (d.gathered || []).join('\n');
+      document.getElementById('scrape-banner').style.display = 'none';
+      console.log('[Scrape] Done. Context length:', scrapedContext.length);
+    })
+    .catch(function(e){
+      console.warn('[Scrape] Failed:', e);
+      document.getElementById('scrape-banner').style.display = 'none';
+    });
+    // Don't await — proceed to questions immediately
+  }
+
+  startJourney();
+}
+
+// ── QUESTIONS (extended) ──
+var questions = [
+  // ── INTAKE CONTEXT ──
+  { number:"01", type:"text", text:"What did you want to be when you were 7 years old, before anyone told you that was unrealistic?", hint:"Not what you said to impress adults. The real answer.", placeholder:"I wanted to..." },
+  { number:"02", type:"text", text:"What do you do when nobody is watching and there is no reward?", hint:"The thing you would do at 2am for no reason at all.", placeholder:"I find myself..." },
+  // ── ILLUSION ──
+  { number:"03", type:"illusion", badge:"🔍 What do you see first?", text:"Old woman or young lady?", hint:"Trust your gut — first instinct only.", illusion:"oldyoung",
+    options:[{icon:"👵",text:"An old woman",val:"old_woman"},{icon:"💃",text:"A young lady",val:"young_woman"},{icon:"🔄",text:"Both at once",val:"both"},{icon:"🌫️",text:"Just shapes",val:"abstract"}],
+    traits:{old_woman:['wise','detail'],young_woman:['optimistic','future'],both:['balanced','adaptable'],abstract:['analytical','logical']} },
+  { number:"04", type:"text", text:"What injustice in the world makes you so angry you cannot sleep?", hint:"Not what you think you should care about. What actually keeps you up.", placeholder:"It is the fact that..." },
+  // ── ILLUSION ──
+  { number:"05", type:"illusion", badge:"🔍 Optical Illusion", text:"Duck or rabbit — what did you see first?", hint:"Stare 1 second then choose.", illusion:"duckrabbit",
+    options:[{icon:"🦆",text:"A duck",val:"duck"},{icon:"🐰",text:"A rabbit",val:"rabbit"},{icon:"🔄",text:"I flip between both",val:"both"},{icon:"🤷",text:"Just a blob",val:"abstract"}],
+    traits:{duck:['grounded','realistic'],rabbit:['playful','imaginative'],both:['flexible','open'],abstract:['analytical','methodical']} },
+  { number:"06", type:"text", text:"Describe a moment where you felt completely and undeniably yourself.", hint:"When did time disappear and you forgot to perform?", placeholder:"It was when..." },
+  // ── VISUAL CHOICE ──
+  { number:"07", type:"choice", badge:"🎨 Visual Instinct", text:"Which world speaks to your soul right now?", hint:"Heart not head.", choiceA:{illusion:"space",label:"🌌 Cosmic and vast"}, choiceB:{illusion:"forest",label:"🌿 Green and grounded"},
+    traits:{A:['dreamer','visionary','big-picture'],B:['nurturing','present','nature-lover']} },
+  { number:"08", type:"text", text:"What did you give up that you still think about?", hint:"Be honest. The thing that surfaces sometimes when it is quiet.", placeholder:"I let go of..." },
+  // ── ILLUSION ──
+  { number:"09", type:"illusion", badge:"🔍 Optical Illusion", text:"Vase or two faces?", hint:"First glance only.", illusion:"vasefaces",
+    options:[{icon:"🏺",text:"A vase",val:"vase"},{icon:"👥",text:"Two faces",val:"faces"},{icon:"🔄",text:"It kept switching",val:"switch"},{icon:"🤔",text:"Had to think hard",val:"thinker"}],
+    traits:{vase:['practical','object-focused'],faces:['empathetic','people-oriented'],switch:['flexible','adaptable'],thinker:['introspective','deep']} },
+  { number:"10", type:"text", text:"What do people always come to you for, even without asking?", hint:"Your natural gift. The thing others see before you do.", placeholder:"People come to me when they need..." },
+  // ── VISUAL CHOICE ──
+  { number:"11", type:"choice", badge:"🎨 Visual Instinct", text:"Which calls to you more right now?", hint:"Pure feeling.", choiceA:{illusion:"alone",label:"🌅 Peaceful solitude"}, choiceB:{illusion:"friends",label:"🎉 Joy with others"},
+    traits:{A:['introspective','independent','deep-thinker'],B:['social','warm','team-player']} },
+  { number:"12", type:"text", text:"If money, status, and judgment did not exist, what would you spend your days doing?", hint:"No one is watching. No one is grading you.", placeholder:"I would spend my time..." },
+  // ── ILLUSION ──
+  { number:"13", type:"illusion", badge:"⚡ Direction Check", text:"Which arrow did you notice first?", hint:"Just a gut check.", illusion:"arrows",
+    options:[{icon:"➡️",text:"Top arrow right",val:"right"},{icon:"⬅️",text:"Middle arrow left",val:"left"},{icon:"↔️",text:"The double-headed one",val:"both"},{icon:"🌀",text:"All three confused me",val:"confused"}],
+    traits:{right:['forward-thinker','leader'],left:['reflective','cautious'],both:['balanced','big-picture'],confused:['creative','nonlinear']} },
+  { number:"14", type:"text", text:"What are your current hobbies? What do you do just for fun?", hint:"The things that make you feel alive when you are not performing.", placeholder:"Right now I love..." },
+  { number:"15", type:"text", text:"What hobbies or passions did you have in the past that you left behind? What happened?", hint:"Something you used to love. Why did it fade?", placeholder:"I used to be really into..." },
+  { number:"16", type:"text", text:"What does your ideal Tuesday look like? Not vacation, just a regular day.", hint:"Morning to night. Be specific.", placeholder:"I wake up and..." },
+  { number:"17", type:"text", text:"What is the one thing you know deeply, from lived experience, that most people do not?", hint:"Something hard-won. Your private wisdom.", placeholder:"I know that..." },
+  { number:"18", type:"text", text:"The version of me I am most afraid to become is... and what one thing is keeping you from the version you most want to be?", hint:"The fear underneath the fear.", placeholder:"The version I am afraid to become is..." }
+];
+
+var currentQ = 0;
+var answers = [];
+var globalProfile = null;
+var graphData = null;
+var reflectData = null;
+var graphReady = false;
+var reflectReady = false;
+var illusionAnswer = null;
+
+// ── VISUAL PERSONALITY (from index_haiya) ──
+var TRAIT_MAP = {
+  wise:'healer',detail:'builder',optimistic:'dreamer',future:'dreamer',balanced:'explorer',adaptable:'explorer',
+  analytical:'builder',logical:'builder',curious:'explorer',creative:'dreamer',cautious:'healer',empathetic:'healer',
+  peaceful:'healer',gentle:'healer',brave:'explorer',bold:'explorer',grounded:'builder',realistic:'builder',
+  playful:'dreamer',imaginative:'dreamer',flexible:'explorer',open:'explorer',dreamer:'dreamer',visionary:'dreamer',
+  'big-picture':'dreamer',nurturing:'healer',present:'healer','nature-lover':'healer',stable:'builder',loyal:'healer',
+  comforter:'healer',restless:'explorer',adventurous:'explorer',social:'explorer',warm:'healer',maker:'builder',
+  aesthetic:'dreamer',practical:'builder','object-focused':'builder','people-oriented':'healer',
+  introspective:'dreamer',deep:'dreamer',thinker:'builder',calm:'healer',intuitive:'dreamer',joyful:'explorer',
+  expressive:'dreamer',leader:'builder','deep-thinker':'dreamer','team-player':'explorer',passionate:'builder',
+  courageous:'builder',driven:'builder',artistic:'dreamer',compassionate:'healer',giving:'healer',
+  'free-spirited':'explorer',strategic:'builder',independent:'dreamer',methodical:'builder',seeking:'explorer',
+  'forward-thinker':'builder',reflective:'healer',nonlinear:'dreamer'
+};
+
+var PERSONALITIES = {
+  dreamer:{emoji:'🌌', bg:'linear-gradient(135deg,#3b0764,#6c2cff)', title:'The Visionary Dreamer',
+    tagline:'Your mind lives in worlds most people never visit.',
+    trueself:'Your imagination is genuinely extraordinary. Built to think beyond what exists.',
+    gift:'Turning ideas into worlds through art, stories, or inventions that did not exist before you.',
+    growth:'You are a quiet leader. You can bridge visions to reality better than you think.',
+    suppress:'You might be suppressing your desire to lead. Deep down you want your ideas to matter.',
+    traits:['Imaginative','Intuitive','Empathetic','Creative','Independent','Deep Thinker']},
+  explorer:{emoji:'🗺️', bg:'linear-gradient(135deg,#064e3b,#059669)', title:'The Free-Spirited Explorer',
+    tagline:'Life is your adventure. You were never built to stay in one place.',
+    trueself:'You crave newness, connection, and meaning. You light up any room you enter.',
+    gift:'Seeing opportunities where others see walls, and bringing people along with you.',
+    growth:'Your adaptability is rare. You can thrive in chaos where others freeze solid.',
+    suppress:'You may be suppressing your need for deep roots. Exploring does not mean you cannot belong.',
+    traits:['Adventurous','Brave','Curious','Adaptable','Social','Free-Spirited']},
+  healer:{emoji:'💚', bg:'linear-gradient(135deg,#065f46,#10b981)', title:'The Compassionate Healer',
+    tagline:'People feel safe around you. Your empathy is a superpower.',
+    trueself:'You are woven from empathy. Built to hold space and make people feel less alone.',
+    gift:'Sensing what others feel before they say it, and responding with exactly what they need.',
+    growth:'You are stronger than you realise. Your sensitivity is not weakness.',
+    suppress:'You might be suppressing your own needs. When did you last truly let someone care for YOU?',
+    traits:['Empathetic','Warm','Nurturing','Intuitive','Loyal','Deep Listener']},
+  builder:{emoji:'⚡', bg:'linear-gradient(135deg,#78350f,#f59e0b)', title:'The Driven Builder',
+    tagline:'You do not just dream. You execute.',
+    trueself:'You are wired to create impact at scale. You see problems as puzzles begging to be solved.',
+    gift:'Taking chaos and building structure, strategy, and momentum out of nothing.',
+    growth:'You carry deep emotional intelligence. You just do not always show it.',
+    suppress:'You might be suppressing your creative side. Behind all that strategy lives someone who wants to make something beautiful.',
+    traits:['Strategic','Driven','Logical','Courageous','Focused','Natural Leader']}
+};
+
+var vTraitScores = { dreamer:0, explorer:0, healer:0, builder:0 };
+var visualPersonality = null;
+
+// ── SESSION LOADER ON INTRO ──
+function loadIntroSessions() {
+  fetch('/api/session/list')
+    .then(function(r){ return r.json(); })
+    .then(function(sessions) {
+      var el = document.getElementById('sessions-loader');
+      if(!sessions || !sessions.length) { el.style.opacity = '0'; return; }
+      var html = '<div class="sessions-label">Or continue a previous session</div>';
+      html += '<div class="session-pills">';
+      sessions.slice(0, 6).forEach(function(s) {
+        var date = s.saved_at ? s.saved_at.substring(0,10) : '';
+        html += '<button class="session-pill" onclick="loadAndShowSession(\'' + s.session_id + '\')">';
+        html += '<span class="pill-archetype">' + (s.archetype_name || 'Unknown') + '</span>';
+        html += '<span class="pill-date">' + date + '</span>';
+        html += '</button>';
+      });
+      html += '</div>';
+      el.innerHTML = html;
+      el.style.opacity = '1';
+    })
+    .catch(function(){});
+}
+
+function loadAndShowSession(sessionId) {
+  fetch('/api/session/load/' + sessionId)
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if(data.error) return;
+      SESSION_ID = sessionId;
+      // Restore answers
+      answers = data.answers || [];
+      // Restore archetype
+      var arch = ARCHETYPES[data.archetype_id] || ARCHETYPES.quiet_fire;
+      // Restore portrait
+      var portrait = data.portrait || arch.portrait;
+      // Restore graph and reflect
+      graphData   = data.graph   || null;
+      reflectData = data.reflect || null;
+      graphReady   = !!graphData;
+      reflectReady = !!reflectData;
+      // Restore faculty cache
+      facultyCache = data.faculty_responses || {};
+      globalProfile = { archetype: arch, portrait: portrait };
+
+      document.getElementById('intro').style.display = 'none';
+      showResult(arch, portrait);
+    })
+    .catch(function(e){ console.error('Failed to load session', e); });
+}
+
+// Load sessions when page is ready
+setTimeout(loadIntroSessions, 400);
+
+// ── ARCHETYPES ──
+var ARCHETYPES = {
+  quiet_fire: {
+    id: "quiet_fire", name: "The Quiet Fire", rare: false,
+    description: "Carries intensity inward. Seen as calm, but burning. Natural truth-teller who learned diplomacy as armor.",
+    portrait: {
+      who_you_are: "You have spent a long time being careful. Not because you are timid, but because somewhere along the way you learned that your full range was too much for the rooms you were in. You carry a private world of ideas and feelings that runs much deeper than what you show. The injustice that keeps you up is not abstract. It lives in your body. You see the gap between what is and what should be before anyone else in the room does, and that gift has made you both extraordinary and lonely.",
+      who_you_were_born_to_be: "The version of you that never apologised for its full range does not just help people. It builds something that lasts. A room, a practice, a body of work, a movement, where the thing that has always made you feel like too much becomes the very reason people come. You were born to translate the complicated into the true, to make people feel less alone in their specific and private strangeness.",
+      the_gap: "The world taught you early that security comes from fitting the shape of what is expected, and you learned that lesson so well it became invisible to you. You are living inside a story that says your real self is a risk. The gap is not talent and it is not opportunity. It is a sentence someone said to you years ago that you have been quietly obeying ever since.",
+      first_step: "Write one paragraph describing the project you have been not ready for, as if it already exists and you are proud of it, then send it to one person who would not try to fix it."
+    }
+  },
+  reluctant_pioneer: {
+    id: "reluctant_pioneer", name: "The Reluctant Pioneer", rare: false,
+    description: "Always three steps ahead of the room. Has been called too much or too idealistic. Builds what others said could not be done.",
+    portrait: {
+      who_you_are: "You have always been able to see around corners. Not because you are smarter, but because you never fully accepted the premise of the room you were in. You have been called idealistic, difficult, ahead of your time. You carry the specific exhaustion of someone who has spent years translating their vision into language small enough for others to hold without dropping it. You are not actually reluctant. You are tired of pioneering alone.",
+      who_you_were_born_to_be: "You were built to build the thing that does not exist yet. Not to improve what is there, but to render it irrelevant. The version of you that stopped explaining itself and simply started making is the version the world is waiting for. Your instinct to go further than the consensus, to trust the thing you see that others cannot yet, that is not arrogance. It is your actual job.",
+      the_gap: "You were told that confidence is something you earn after others validate you. So you have been waiting for the validation before you fully commit. But pioneers do not get validated first. They get validated after, sometimes long after. The gap is that you are still waiting for a signal that was never going to come from the direction you were looking.",
+      first_step: "Name the one project you have been orbiting for more than a year and set a date two weeks from now to show a rough version of it to someone who will not soften their reaction."
+    }
+  },
+  keeper: {
+    id: "keeper", name: "The Keeper of Forgotten Things", rare: false,
+    description: "Collects what others discard. Drawn to the overlooked and undervalued. Memory and legacy oriented.",
+    portrait: {
+      who_you_are: "You notice what disappears. Stories that were not written down, skills that did not survive the transition, the specific way your grandmother said a word that no one remembers anymore. You are drawn to the margins of things, to what got left behind when the world moved on. People experience you as unusually present, as someone who actually listens, because you are. You are archiving them. The melancholy you carry is not depression. It is grief for things that did not have to be lost.",
+      who_you_were_born_to_be: "You were born to be the connective tissue between what was and what is becoming. The work you are here to do is not nostalgia. It is recovery. You take what was abandoned and make it relevant again, not as a relic but as the missing piece the present desperately needs. The thing no one has told you is that your instinct to preserve is also an instinct to build. Everything you have been collecting is raw material.",
+      the_gap: "You have been underestimating the value of what you carry. In a world that rewards novelty, your orientation toward depth and continuity has been framed as a limitation. You internalized that. The gap is not skill or vision. It is that you have been apologising for your archive instead of recognising it as the most valuable thing in the room.",
+      first_step: "Pick one thing you have been preserving privately and share it publicly this week, in any form, as if it matters, because it does."
+    }
+  },
+  bridge: {
+    id: "bridge", name: "The Bridge", rare: false,
+    description: "Lives between worlds. Translates between people who cannot understand each other. Never fully belongs anywhere but is needed everywhere.",
+    portrait: {
+      who_you_are: "You have never fully belonged to any one world, and you have spent a long time thinking that was the problem. It is not. You are the person in the room who can hold two contradictory things at once without needing to resolve them. You understand people who cannot understand each other. The loneliness this creates is real. So is the gift. The question is whether you are ready to stop seeing your in-between-ness as homelessness and start seeing it as your actual home.",
+      who_you_were_born_to_be: "You were born to build the connection that was not there before. Not to belong to a side but to make two sides legible to each other. The bridges you build are not metaphors. They are the actual work of reducing the distance between people who have given up on understanding each other. You are one of the few people who can do this.",
+      the_gap: "You have been trying to choose a side so you can finally feel like you belong somewhere. But belonging is not the point for you. Contribution is. The gap is the energy you spend trying to be more one thing, when your entire value is that you are always two things at once.",
+      first_step: "Identify the one relationship or conflict in your life where you are the only person who can see both sides, and do one concrete thing this week to close that specific gap."
+    }
+  },
+  the_seeker: {
+    id: "the_seeker", name: "The Seeker", rare: true,
+    description: "RARE. Keeps moving. Has unfinished projects everywhere. Not because of lack of discipline, but because they are searching for the right people to build with. The work is always real. The room is always wrong.",
+    portrait: {
+      who_you_are: "Your graveyard of unfinished projects is not evidence of failure. It is evidence of a standard most people do not have. You start things because you see what they could become, and you stop them when you realize the people around you cannot see it too, or will not go far enough, or are building something smaller than what you had in mind. You have been told this is a discipline problem. It is not. It is a collaboration problem. You are someone who cannot do your best work alone, but who has not yet found the people who match the frequency of what you are trying to build.",
+      who_you_were_born_to_be: "You were born to build something with a specific set of people who do not all know each other yet. The project that will define you has not been finished because the team that can finish it has not been assembled. When it is, the pace at which you work will stun everyone around you, including yourself. You are not someone who cannot commit. You are someone who refuses to commit to the wrong thing, and that refusal, as costly as it has been, is the most honest thing about you.",
+      the_gap: "The world told you that finishing things alone is proof of worth, and you have been trying to prove yourself by that measure ever since. But your architecture requires other people. Not as support, not as audience, but as co-creators who are as serious as you are. The gap is not inside you. It is in the search. You have been settling for rooms where you are the most serious person, and that will always end the same way.",
+      first_step: "Write down two or three qualities the person you are looking for would have, not their credentials but their character, and tell one person who knows you well that you are looking for them."
+    }
+  }
+};
+
+function startJourney() {
+  document.getElementById('intro').style.display = 'none';
+  document.getElementById('intake').style.display = 'none';
+  document.getElementById('questions').style.display = 'block';
+  renderQuestion();
+}
+
+function renderQuestion() {
+  var q = questions[currentQ];
+  var total = questions.length;
+  document.getElementById('progress').style.width = ((currentQ / total) * 100) + '%';
+  illusionAnswer = null;
+
+  var numLabel = q.number + ' / ' + total;
+  var html = '';
+
+  if(q.type === 'illusion') {
+    html += '<div class="question-container">';
+    html += '<div class="q-number" style="color:var(--teal);">' + (q.badge || numLabel) + '</div>';
+    html += '<div class="q-text">' + q.text + '</div>';
+    html += '<div class="q-hint">' + q.hint + '</div>';
+    html += '<div class="illusion-wrap">' + ILLUSIONS[q.illusion] + '</div>';
+    html += '<div class="options-grid-2">';
+    q.options.forEach(function(opt) {
+      html += '<button class="opt-card" onclick="selectIllusion(\'' + opt.val + '\',this)">';
+      html += '<span class="opt-icon-big">' + opt.icon + '</span><span>' + opt.text + '</span></button>';
+    });
+    html += '</div>';
+    html += '<p class="error-msg" id="err">Please pick an option.</p>';
+    html += '<button class="next-btn" onclick="nextQuestion()">Continue <span class="arr">&#8594;</span></button>';
+    html += '</div>';
+  } else if(q.type === 'choice') {
+    html += '<div class="question-container">';
+    html += '<div class="q-number" style="color:var(--amber);">' + (q.badge || numLabel) + '</div>';
+    html += '<div class="q-text">' + q.text + '</div>';
+    html += '<div class="q-hint">' + q.hint + '</div>';
+    html += '<div class="two-img-grid">';
+    html += '<div class="img-choice" id="choiceA" onclick="selectChoice(\'A\')">' + ILLUSIONS[q.choiceA.illusion] + '<div class="img-choice-label">' + q.choiceA.label + '</div></div>';
+    html += '<div class="img-choice" id="choiceB" onclick="selectChoice(\'B\')">' + ILLUSIONS[q.choiceB.illusion] + '<div class="img-choice-label">' + q.choiceB.label + '</div></div>';
+    html += '</div>';
+    html += '<p class="error-msg" id="err">Please pick one.</p>';
+    html += '<button class="next-btn" onclick="nextQuestion()">Continue <span class="arr">&#8594;</span></button>';
+    html += '</div>';
+  } else {
+    // text question
+    html += '<div class="question-container">';
+    html += '<div class="q-number">' + numLabel + '</div>';
+    html += '<div class="q-text">' + q.text + '</div>';
+    html += '<div class="q-hint">' + q.hint + '</div>';
+    html += '<div class="answer-area">';
+    html += '<textarea id="ans" placeholder="' + q.placeholder + '" rows="4"></textarea>';
+    html += '<p class="error-msg" id="err">Please share something.</p>';
+    var btnLabel = currentQ < questions.length - 1 ? 'Continue' : 'Reveal who I am';
+    html += '<button class="next-btn" onclick="nextQuestion()">' + btnLabel + ' <span class="arr">&#8594;</span></button>';
+    html += '</div></div>';
+  }
+
+  document.getElementById('question-area').innerHTML = html;
+  setTimeout(function() { var a = document.getElementById('ans'); if(a) a.focus(); }, 700);
+}
+
+function selectIllusion(val, btn) {
+  document.querySelectorAll('.opt-card').forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  illusionAnswer = val;
+}
+
+function selectChoice(side) {
+  document.getElementById('choiceA').classList.remove('selected');
+  document.getElementById('choiceB').classList.remove('selected');
+  document.getElementById('choice'+side).classList.add('selected');
+  illusionAnswer = side;
+}
+
+function nextQuestion() {
+  var q = questions[currentQ];
+  var answer = '';
+
+  if(q.type === 'illusion' || q.type === 'choice') {
+    if(!illusionAnswer) { document.getElementById('err').style.display = 'block'; return; }
+    if(q.type === 'illusion') {
+      var picked = q.options.filter(function(o){ return o.val === illusionAnswer; })[0];
+      answer = picked ? picked.text : illusionAnswer;
+    } else {
+      answer = illusionAnswer === 'A' ? q.choiceA.label : q.choiceB.label;
+    }
+    // ── SCORE VISUAL PERSONALITY TRAITS ──
+    if(q.traits) {
+      var tlist = q.traits[illusionAnswer];
+      if(tlist && tlist.length) {
+        tlist.forEach(function(t){
+          var cat = TRAIT_MAP[t];
+          if(cat && vTraitScores[cat] !== undefined) vTraitScores[cat]++;
+        });
+      }
+    }
+    answers.push({ question: q.text, answer: answer });
+    addHeatBlob(detectEmotion(answer));
+  } else {
+    var el = document.getElementById('ans');
+    if (!el || !el.value.trim()) { document.getElementById('err').style.display = 'block'; return; }
+    answer = el.value.trim();
+    answers.push({ question: q.text, answer: answer });
+    addHeatBlob(detectEmotion(answer));
+  }
+
+  currentQ++;
+  if (currentQ >= questions.length) runAgenticPipeline();
+  else renderQuestion();
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey && document.getElementById('ans')) {
+    e.preventDefault();
+    nextQuestion();
+  }
+});
+
+// ── API CALL via CMU gateway with Anthropic fallback ──
+async function callClaude(prompt, systemPrompt, maxTokens, callback) {
+  var content = systemPrompt ? systemPrompt + '\n\n' + prompt : prompt;
+  var txt;
+  try {
+    const res = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        max_tokens: maxTokens || 2000,
+        messages: [{ role: "user", content: content }]
+      })
+    });
+    const raw = await res.json();
+    txt = raw.content[0].text;
+  } catch(e) {
+    callback(e, null); return;
+  }
+  callback(null, txt);
+}
+
+function safeParseJSON(txt) {
+  try { return JSON.parse(txt); }
+  catch(e) {
+    try { return JSON.parse(txt.replace(/```json|```/g,'').trim()); }
+    catch(e2) { return null; }
+  }
+}
+
+function setLoadingPhase(text) {
+  var el = document.getElementById('loading-phase');
+  if(el) el.textContent = text;
+}
+
+// ── AGENTIC PIPELINE ──
+// Steps run sequentially via callbacks so no async/await needed
+function runAgenticPipeline() {
+  document.getElementById('questions').style.display = 'none';
+  document.getElementById('loading').style.display = 'flex';
+
+  var formatted = answers.map(function(a, i) {
+    return 'Q' + (i+1) + ': ' + a.question + '\nAnswer: ' + a.answer;
+  }).join('\n\n');
+
+  // Prepend scraped public profile if available
+  if(scrapedContext) {
+    formatted = '--- PUBLIC PROFILE DATA ---\nName: ' + userProfile.name + '\n' + scrapedContext + '\n--- END PUBLIC PROFILE ---\n\n' + formatted;
+  } else if(userProfile.name) {
+    formatted = 'Name: ' + userProfile.name + '\n\n' + formatted;
+  }
+
+  // Step 1: Entity extraction
+  setLoadingPhase("Extracting what matters...");
+  var extractPrompt = 'From these 10 answers, extract key semantic entities. Return ONLY raw JSON, no markdown, no backticks.\n\nAnswers:\n' + formatted + '\n\nReturn this exact structure:\n{"unlived_dreams":[{"dream":"short description","raw_quote":"exact phrase","domain":"creative|career|relationship|purpose|identity"}],"core_strengths":["s1","s2","s3"],"core_fears":["f1","f2"],"defining_moments":["m1","m2"],"recurring_themes":["t1","t2","t3"],"unfinished_projects_count":0,"collaboration_signals":false,"intensity_level":"high|medium|low","world_orientation":"preserver|builder|connector|challenger|seeker"}';
+
+  callClaude(extractPrompt, "You extract semantic entities from personal narrative. Return only valid JSON, no markdown.", 1500, function(err, txt) {
+    var extracted = err || !txt ? { unlived_dreams:[], core_strengths:[], core_fears:[], recurring_themes:[], unfinished_projects_count:0, collaboration_signals:false } : (safeParseJSON(txt) || {});
+
+    // Step 2: Archetype matching — include raw answers for full context
+    setLoadingPhase("Finding your archetype...");
+    var archetypePrompt = 'Read these 10 answers carefully and pick the single best matching archetype. Return ONLY raw JSON, no markdown.\n\nRaw answers:\n' + formatted + '\n\nExtracted signals:\n' + JSON.stringify(extracted) + '\n\nArchetypes — read ALL carefully before choosing:\n- quiet_fire: carries intensity inward, appears calm but burning inside, natural truth-teller who learned diplomacy as armor, sees what is wrong before others do, made extraordinary and lonely by this\n- reluctant_pioneer: always 3 steps ahead of the room, has been called too much or too idealistic, builds what others said could not be done, tired of pioneering alone, waiting for validation that will not come\n- keeper: drawn to what disappears and is overlooked, collects what others discard, memory and legacy oriented, grieves things that did not have to be lost, archive is their most valuable asset\n- bridge: lives between worlds, never fully belongs anywhere, translates between people who cannot understand each other, contribution not belonging is the point, their in-between-ness is a gift not a flaw\n- the_seeker: RARE — keeps moving, has graveyard of unfinished projects NOT from lack of discipline but because the room is always wrong, searching for specific collaborators, cannot do best work alone, refuses to commit to the wrong thing\n\nKey signals for the_seeker: mentions multiple abandoned projects, feels people around them cannot see the vision, dreams of the right team or collaborators, feels like the most serious person in every room.\nKey signals for bridge: mentions being between cultures/worlds/groups, translating for others, not belonging anywhere fully.\nKey signals for keeper: mentions preserving things, nostalgia, things being lost, collecting or remembering.\nKey signals for reluctant_pioneer: mentions being told they are too much/too idealistic, ahead of their time, building the thing that does not exist.\nKey signals for quiet_fire: intensity hidden, learned to soften themselves, injustice that lives in the body, extraordinary and lonely.\n\nReturn: {"archetype":"id","confidence":0.0-1.0,"reasoning":"one specific sentence referencing their actual answers","secondary":"second_id"}';
+
+    callClaude(archetypePrompt, "You are a psychologist matching people to archetypes based on their answers. Be precise. Return only valid JSON.", 500, function(err2, txt2) {
+      var archetypeMatch = { archetype: "quiet_fire", confidence: 0.5 };
+      if(!err2 && txt2) {
+        var parsed = safeParseJSON(txt2);
+        if(parsed && parsed.archetype && ARCHETYPES[parsed.archetype]) {
+          archetypeMatch = parsed;
+        }
+      }
+      var archetype = ARCHETYPES[archetypeMatch.archetype] || ARCHETYPES.quiet_fire;
+      console.log('[Archetype]', archetypeMatch.archetype, '—', archetypeMatch.reasoning);
+      var basePortrait = archetype.portrait;
+
+      // Step 3: Portrait personalization
+      setLoadingPhase("Writing your portrait...");
+      var portraitPrompt = 'Personalize this portrait using the persons exact words. Do NOT use em dashes. Return ONLY raw JSON.\n\nTheir answers:\n' + formatted + '\n\nBase portrait to personalize:\n' + JSON.stringify(basePortrait) + '\n\nReturn same keys: {"who_you_are":"...","who_you_were_born_to_be":"...","the_gap":"...","first_step":"..."}';
+
+      callClaude(portraitPrompt, "You write profound personalized life portraits. Return only valid JSON, no markdown.", 2000, function(err3, txt3) {
+        var portrait = err3 || !txt3 ? basePortrait : (safeParseJSON(txt3) || basePortrait);
+        globalProfile = { archetype: archetype, portrait: portrait };
+
+        // Show result immediately with portrait
+        // Graph and counselor run in background
+        document.getElementById('loading').style.display = 'none';
+        showResult(archetype, portrait);
+        // Save initial session as soon as portrait is ready
+        saveSession(archetype, portrait, null, null);
+
+        // Background: Graph generation
+        var graphPrompt = 'Generate a life graph from these answers. Return ONLY raw JSON.\n\nAnswers:\n' + formatted + '\n\nReturn:\n{"root":{"id":"root","label":"Who You Are Now","sublabel":"4-6 word essence","type":"root"},"branches":[{"id":"b1","label":"3-4 words","type":"branch","color_key":"rose"},{"id":"b2","label":"3-4 words","type":"branch","color_key":"teal"},{"id":"b3","label":"3-4 words","type":"branch","color_key":"violet"}],"leaves":[{"id":"l1","label":"unlived thing 3-5 words","parent":"b1","type":"leaf","source_quote":"exact phrase","domain":"creative"},{"id":"l2","label":"unlived thing","parent":"b1","type":"leaf","source_quote":"phrase","domain":"creative"},{"id":"l3","label":"unlived thing","parent":"b2","type":"leaf","source_quote":"phrase","domain":"career"},{"id":"l4","label":"unlived thing","parent":"b2","type":"leaf","source_quote":"phrase","domain":"purpose"},{"id":"l5","label":"unlived thing","parent":"b3","type":"leaf","source_quote":"phrase","domain":"identity"}],"actions":[{"id":"a1","label":"action 4-6 words","parent":"l1","type":"action","direction":"one sentence"},{"id":"a2","label":"action","parent":"l2","type":"action","direction":"one sentence"},{"id":"a3","label":"action","parent":"l3","type":"action","direction":"one sentence"},{"id":"a4","label":"action","parent":"l4","type":"action","direction":"one sentence"},{"id":"a5","label":"action","parent":"l5","type":"action","direction":"one sentence"}]}';
+
+        callClaude(graphPrompt, "You generate life graph data as JSON. Return only valid JSON.", 1800, function(errG, txtG) {
+          graphData = errG || !txtG ? getFallbackGraph() : (safeParseJSON(txtG) || getFallbackGraph());
+          graphReady = true;
+          tryRenderGraph();
+          // Resave with graph data
+          saveSession(globalProfile.archetype, globalProfile.portrait, graphData, reflectData);
+        });
+
+        // Background: Reflect pattern
+        var reflectPrompt = 'Write one short, piercing observation about this person that they probably know but have never said out loud. One sentence. No flattery. No em dashes. Just the truth.\n\nAnswers:\n' + formatted;
+        callClaude(reflectPrompt, "You write one honest, piercing sentence of reflection. One sentence only.", 200, function(errR, txtR) {
+          reflectData = errR || !txtR ? "You already know what you need to do. You have known for a while." : txtR.trim().replace(/^"|"$/g,'');
+          reflectReady = true;
+          tryShowReflect();
+        });
+
+        // Background: Counselor brief
+        var counselorPrompt = 'Write a professional counselor brief. Return ONLY raw JSON.\n\nProfile: ' + JSON.stringify(extracted) + '\nArchetype: ' + archetypeMatch.archetype + '\n\nReturn: {"summary":"2-3 sentences","key_observations":["obs1","obs2","obs3"],"conversation_starters":["q1","q2","q3"],"flags":["flag1"]}';
+        callClaude(counselorPrompt, "You are a professional counselor writing internal notes. Return only valid JSON.", 800, function(errC, txtC) {
+          var counselorBrief = errC || !txtC ? null : safeParseJSON(txtC);
+          if(counselorBrief) showCounselorBrief(counselorBrief);
+        });
+      });
+    });
+  });
+}
+
+// ── REFLECT PATTERN ──
+function tryShowReflect() {
+  var strip = document.getElementById('reflect-strip');
+  if(!strip || !reflectData) return;
+  var thinkEl = strip.querySelector('.reflect-thinking');
+  var textEl = strip.querySelector('.reflect-text');
+  if(thinkEl) thinkEl.style.display = 'none';
+  if(textEl) {
+    textEl.textContent = reflectData;
+    textEl.style.display = 'block';
+  }
+}
+
+function tryRenderGraph() {
+  // setTimeout(0) ensures DOM has painted before D3 tries to measure container width
+  setTimeout(function() {
+    var graphContainer = document.getElementById('life-graph');
+    if(!graphContainer || !graphData) return;
+    graphContainer.innerHTML = '';
+    renderD3Graph(graphData);
+    // Force the graph section visible in case it's already in viewport
+    var sec5 = document.getElementById('sec5');
+    if(sec5) sec5.classList.add('visible');
+  }, 0);
+}
+
+// ── SHOW RESULT ──
+function showResult(archetype, portrait) {
+  SESSION_ID = SESSION_ID || generateSessionId();
+  var result = document.getElementById('result');
+  result.style.display = 'block';
+
+  // ── COMPUTE VISUAL PERSONALITY from trait scores ──
+  var topCat = 'dreamer', topScore = -1;
+  Object.keys(vTraitScores).forEach(function(k){
+    if(vTraitScores[k] > topScore) { topScore = vTraitScores[k]; topCat = k; }
+  });
+  if(topScore === 0) {
+    // fallback — map from archetype so VP is never empty
+    var mapFromArch = { quiet_fire:'dreamer', reluctant_pioneer:'builder', keeper:'healer', bridge:'explorer', the_seeker:'dreamer' };
+    topCat = mapFromArch[archetype.id] || 'dreamer';
+  }
+  visualPersonality = PERSONALITIES[topCat];
+
+  var badgeClass = archetype.rare ? 'archetype-badge rare' : 'archetype-badge common';
+  var badgeText = archetype.rare ? 'Rare Archetype' : 'Archetype';
+
+  var html = '';
+  html += '<div class="result-header">';
+  html += '<p class="eyebrow">You are</p>';
+  html += '<span class="' + badgeClass + '">' + badgeText + '</span>';
+  html += '<h1>' + archetype.name + '</h1>';
+  html += '<p style="font-family:Cormorant Garamond,serif;font-size:16px;color:var(--mist);margin-top:16px;font-style:italic;">' + archetype.description + '</p>';
+  html += '</div>';
+
+  html += '<div class="reflect-strip" id="reflect-strip">';
+  html += '<span class="reflect-label">Reflection</span>';
+  html += '<span class="reflect-text"></span>';
+  html += '<span class="reflect-thinking">Still thinking...</span>';
+  html += '</div>';
+
+  html += '<div class="result-section" id="sec1">';
+  html += '<p class="section-label label-you">Who you are</p>';
+  html += '<div class="section-text"><p>' + portrait.who_you_are + '</p></div>';
+  html += '</div>';
+
+  html += '<div class="result-section" id="sec2">';
+  html += '<p class="section-label label-born">Who you were born to be</p>';
+  html += '<div class="section-text"><p>' + portrait.who_you_were_born_to_be + '</p></div>';
+  html += '</div>';
+
+  html += '<div class="result-section" id="sec3">';
+  html += '<p class="section-label label-gap">What the world made of you</p>';
+  html += '<div class="section-text"><p>' + portrait.the_gap + '</p></div>';
+  html += '</div>';
+
+  html += '<div class="result-section" id="sec4">';
+  html += '<p class="section-label label-step">Your first step this week</p>';
+  html += '<div class="step-text">' + portrait.first_step + '</div>';
+  html += '</div>';
+
+  // ── VISUAL PERSONALITY (what your eyes reveal) ──
+  var p = visualPersonality;
+  var pills = p.traits.map(function(t){ return '<span class="trait-pill">' + t + '</span>'; }).join('');
+  html += '<div class="vp-result-section result-section" id="sec-vp">';
+  html += '<p class="section-label" style="color:var(--rose)">What your eyes reveal</p>';
+  html += '<div class="vp-header">';
+  html += '<div class="vp-aura" style="background:' + p.bg + '">' + p.emoji + '</div>';
+  html += '<div><div class="vp-type-label">Visual Personality</div>';
+  html += '<div class="vp-type-title">' + p.title + '</div></div>';
+  html += '</div>';
+  html += '<p class="vp-tagline">' + p.tagline + '</p>';
+  html += '<div class="traits-row">' + pills + '</div>';
+  html += '<div class="vp-boxes">';
+  html += '<div class="vp-box"><div class="vp-box-icon">🌟</div><div class="vp-box-title">Your True Self</div><div class="vp-box-text">' + p.trueself + '</div></div>';
+  html += '<div class="vp-box"><div class="vp-box-icon">🎁</div><div class="vp-box-title">Your Gift</div><div class="vp-box-text">' + p.gift + '</div></div>';
+  html += '<div class="vp-box wide"><div class="vp-box-icon">⚡</div><div class="vp-box-title">Your Hidden Edge</div><div class="vp-box-text">' + p.growth + '</div></div>';
+  html += '</div>';
+  html += '<div class="suppress-box">';
+  html += '<div class="suppress-title">🔮 What You Might Be Suppressing</div>';
+  html += '<div class="suppress-text">' + p.suppress + '</div>';
+  html += '</div>';
+  html += '</div>';
+
+  // ── COMBINED ASSESSMENT (the full picture) ──
+  html += '<div class="combined-section result-section" id="sec-combined">';
+  html += '<p class="combined-title">The Full Picture</p>';
+  html += '<p class="combined-subtitle">Two lenses. One truth.</p>';
+  html += '<div class="combined-grid">';
+  html += '<div class="combined-card">';
+  html += '<div class="combined-card-label deep">Deep Self — From Your Words</div>';
+  html += '<div class="combined-card-name">' + archetype.name + '</div>';
+  html += '<div class="combined-card-desc">' + archetype.description + '</div>';
+  html += '</div>';
+  html += '<div class="combined-card">';
+  html += '<div class="combined-card-label visual">Visual Self — From Your Eyes</div>';
+  html += '<div class="combined-card-name">' + p.title + '</div>';
+  html += '<div class="combined-card-desc">' + p.tagline + '</div>';
+  html += '</div>';
+  html += '</div>';
+  html += '<div class="synthesis-box">';
+  html += '<div class="synthesis-label">Synthesis</div>';
+  html += '<div class="synthesis-text" id="synthesis-text">Your words and your instincts tell the same story from different angles. The deep self knows what the visual self feels without naming it. Together they point to someone further along than they believe, who needs to stop waiting for permission to take the next step.</div>';
+  html += '</div>';
+  html += '</div>';
+
+  // ── LIFE GRAPH (existing full picture) ──
+  html += '<div class="graph-wrapper result-section" id="sec5">';
+  html += '<h2 class="graph-title">Your Life Graph</h2>';
+  html += '<p class="graph-subtitle">Your unlived life, mapped. Tap any node to explore with your mentor.</p>';
+  html += '<div id="life-graph">';
+  html += '<div class="graph-analysing"><div class="loading-bar" style="width:120px"></div><p>Analysing your unlived paths...</p></div>';
+  html += '</div></div>';
+
+  // ── ROADMAP (with dog walking through) ──
+  html += '<div class="roadmap-section result-section" id="sec-roadmap">';
+  html += '<h2 class="roadmap-title">Your Life Roadmap</h2>';
+  html += '<p class="roadmap-subtitle">Walk the path. Click each stage to go deeper.</p>';
+  html += '<div id="roadmap-canvas"><svg id="roadmap-svg"></svg></div>';
+  html += '<p class="roadmap-hint">🐾 Click any stage to explore it · Watch your companion journey alongside you</p>';
+  html += '</div>';
+
+  html += '<div id="counselor-placeholder"></div>';
+
+  html += '<div class="action-row">';
+  html += '<p id="session-badge" style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--mist);opacity:0.5;margin:0;">Saving session...</p>';
+  html += '</div>';
+  html += '<div class="action-row" style="margin-top:16px;">';
+  html += '<button class="restart-btn" onclick="location.reload()">Begin again</button>';
+  html += '<a class="chat-more-btn" href="#chat" id="chat-more-btn"><span>Continue with a mentor &rarr;</span></a>';
+  html += '</div>';
+
+  result.innerHTML = html;
+
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) { if(e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.result-section').forEach(function(s) { obs.observe(s); });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  setTimeout(function() {
+    if(reflectReady) tryShowReflect();
+    if(graphReady) tryRenderGraph();
+  }, 100);
+
+  // Build + render the roadmap
+  buildRoadmapStages(archetype, portrait);
+  setTimeout(renderRoadmap, 300);
+
+  document.getElementById('chat-more-btn').addEventListener('click', function(e) {
+    e.preventDefault();
+    openChatPanel();
+  });
+}
+
+function showCounselorBrief(brief) {
+  var placeholder = document.getElementById('counselor-placeholder');
+  if(!placeholder) return;
+  var html = '<div class="counselor-section result-section">';
+  html += '<p class="counselor-label">Counselor Brief — Internal</p>';
+  html += '<div class="counselor-text">' + brief.summary + '</div>';
+  if(brief.conversation_starters && brief.conversation_starters.length) {
+    html += '<div style="margin-top:20px"><p style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--violet);margin-bottom:12px;">Suggested conversation starters</p>';
+    for(var i=0; i<brief.conversation_starters.length; i++) {
+      html += '<div class="starter-item"><span class="starter-num">' + (i+1) + '.</span><span class="starter-q">"' + brief.conversation_starters[i] + '"</span></div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  placeholder.innerHTML = html;
+  var newSec = placeholder.querySelector('.result-section');
+  if(newSec) {
+    var obs2 = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if(e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.08 });
+    obs2.observe(newSec);
+  }
+}
+
+// ── D3 GRAPH ──
+var COLOR_MAP = {
+  rose: '#c45c7a', teal: '#3aada8', violet: '#7c5cbf',
+  amber: '#e07b39', sage: '#5a9e6f', gold: '#d4a843'
+};
+
+function renderD3Graph(graph) {
+  if(!graph) return;
+  var container = document.getElementById('life-graph');
+  if(!container) return;
+  container.innerHTML = '';
+
+  var W = container.offsetWidth || 900;
+  var H = 580;
+
+  var nodesMap = {};
+  var nodes = [];
+  var links = [];
+
+  function addNode(n) { nodesMap[n.id] = n; nodes.push(n); }
+
+  var rootColor = COLOR_MAP.gold;
+  addNode({ id: graph.root.id, label: graph.root.label, sublabel: graph.root.sublabel, type: 'root', color: rootColor, r: 28 });
+
+  var branches = graph.branches || [];
+  for(var i=0; i<branches.length; i++) {
+    var b = branches[i];
+    addNode({ id: b.id, label: b.label, type: 'branch', color: COLOR_MAP[b.color_key] || '#8fa8bb', r: 18 });
+  }
+
+  var leaves = graph.leaves || [];
+  for(var j=0; j<leaves.length; j++) {
+    var l = leaves[j];
+    addNode({ id: l.id, label: l.label, type: 'leaf', color: '#c45c7a', r: 13, source_quote: l.source_quote, domain: l.domain, parent: l.parent });
+  }
+
+  var actions = graph.actions || [];
+  for(var k=0; k<actions.length; k++) {
+    var a = actions[k];
+    addNode({ id: a.id, label: a.label, type: 'action', color: '#5a9e6f', r: 10, direction: a.direction, parent: a.parent });
+  }
+
+  var allEdgeDefs = [];
+  for(var bi=0; bi<branches.length; bi++) allEdgeDefs.push({ source: 'root', target: branches[bi].id });
+  for(var li=0; li<leaves.length; li++) allEdgeDefs.push({ source: leaves[li].parent, target: leaves[li].id });
+  for(var ai=0; ai<actions.length; ai++) allEdgeDefs.push({ source: actions[ai].parent, target: actions[ai].id });
+
+  for(var ei=0; ei<allEdgeDefs.length; ei++) {
+    var ed = allEdgeDefs[ei];
+    if(nodesMap[ed.source] && nodesMap[ed.target]) links.push({ source: ed.source, target: ed.target });
+  }
+
+  var svg = d3.select('#life-graph').append('svg').attr('width', W).attr('height', H);
+
+  var defs = svg.append('defs');
+  for(var ni=0; ni<nodes.length; ni++) {
+    var nd = nodes[ni];
+    var grad = defs.append('radialGradient').attr('id', 'glow-' + nd.id);
+    grad.append('stop').attr('offset','0%').attr('stop-color', nd.color).attr('stop-opacity', 0.3);
+    grad.append('stop').attr('offset','100%').attr('stop-color', nd.color).attr('stop-opacity', 0);
+  }
+
+  var simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(function(d) { return d.id; }).distance(function(d) {
+      var t = typeof d.target === 'object' ? d.target : nodesMap[d.target];
+      if(!t) return 100;
+      if(t.type === 'branch') return 150;
+      if(t.type === 'leaf') return 110;
+      return 80;
+    }).strength(0.8))
+    .force('charge', d3.forceManyBody().strength(function(d) {
+      if(d.type === 'root') return -600;
+      if(d.type === 'branch') return -300;
+      return -150;
+    }))
+    .force('center', d3.forceCenter(W/2, H/2))
+    .force('collision', d3.forceCollide().radius(function(d) { return d.r + 22; }));
+
+  var link = svg.append('g').selectAll('line').data(links).join('line')
+    .attr('class', 'link')
+    .attr('stroke', function(d) {
+      var t = typeof d.target === 'object' ? d.target : nodesMap[d.target];
+      return t ? t.color : '#888';
+    })
+    .attr('stroke-width', function(d) {
+      var t = typeof d.target === 'object' ? d.target : nodesMap[d.target];
+      if(!t) return 1;
+      return t.type === 'branch' ? 2 : 1.5;
+    });
+
+  var nodeG = svg.append('g').selectAll('g').data(nodes).join('g')
+    .attr('class', function(d) { return 'node type-' + d.type; })
+    .call(d3.drag()
+      .on('start', function(event, d) { if(!event.active) simulation.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag', function(event, d) { d.fx=event.x; d.fy=event.y; })
+      .on('end', function(event, d) { if(!event.active) simulation.alphaTarget(0); d.fx=null; d.fy=null; })
+    )
+    .on('click', function(event, d) { if(d.type !== 'root') openNodePanel(d); });
+
+  nodeG.append('circle')
+    .attr('r', function(d) { return d.r + 16; })
+    .attr('fill', function(d) { return 'url(#glow-' + d.id + ')'; })
+    .attr('pointer-events', 'none');
+
+  nodeG.append('circle')
+    .attr('r', function(d) { return d.r; })
+    .attr('fill', '#080810')
+    .attr('stroke', function(d) { return d.color; })
+    .attr('stroke-width', function(d) { return d.type === 'root' ? 2.5 : 1.5; })
+    .attr('stroke-dasharray', function(d) { return d.type === 'leaf' ? '5 3' : null; });
+
+  nodeG.append('circle')
+    .attr('r', function(d) {
+      if(d.type==='root') return 10;
+      if(d.type==='branch') return 6;
+      if(d.type==='leaf') return 4;
+      return 3;
+    })
+    .attr('fill', function(d) { return d.color; })
+    .attr('opacity', 0.85);
+
+  nodeG.append('text')
+    .attr('y', function(d) { return d.r + 14; })
+    .attr('text-anchor', 'middle')
+    .attr('fill', function(d) { return d.color; })
+    .attr('font-size', function(d) { return d.type==='root' ? 11 : d.type==='branch' ? 10 : 9; })
+    .attr('font-family', 'Space Mono, monospace')
+    .attr('opacity', 0.85)
+    .text(function(d) {
+      var lbl = d.sublabel || d.label || '';
+      if(lbl.length > 18) return lbl.substring(0,16) + '...';
+      return lbl;
+    });
+
+  nodeG.filter(function(d) { return d.type === 'leaf' || d.type === 'action'; })
+    .append('text')
+    .attr('y', function(d) { return -(d.r + 6); })
+    .attr('text-anchor', 'middle')
+    .attr('fill', function(d) { return d.color; })
+    .attr('font-size', 8)
+    .attr('font-family', 'Space Mono, monospace')
+    .attr('opacity', 0.35)
+    .text('tap');
+
+  simulation.on('tick', function() {
+    link
+      .attr('x1', function(d) { return d.source.x; })
+      .attr('y1', function(d) { return d.source.y; })
+      .attr('x2', function(d) { return d.target.x; })
+      .attr('y2', function(d) { return d.target.y; });
+    nodeG.attr('transform', function(d) {
+      var x = Math.max(40, Math.min(W-40, d.x));
+      var y = Math.max(40, Math.min(H-40, d.y));
+      return 'translate(' + x + ',' + y + ')';
+    });
+  });
+}
+
+// ── NODE PANEL (Faculty Agent) ──
+var FACULTY_VOICES = {
+  creative: { name: "The Artist Voice", system: "You are a creative mentor. You speak in images and possibility. You ask questions that unlock. You never give generic advice. 3-4 short paragraphs." },
+  career:   { name: "The Strategist Voice", system: "You are a pragmatic strategist. You see clearly, speak directly, give concrete next steps. You do not flatter. 3-4 short paragraphs." },
+  purpose:  { name: "The Socratic Voice", system: "You are a Socratic questioner. You ask the question under the question. You name the unexamined assumption. End with 2 questions. 3-4 paragraphs." },
+  identity: { name: "The Mirror Voice", system: "You show the person what they already know but have not said out loud. Warm, direct, precise. 3-4 short paragraphs." },
+  relationship: { name: "The Connector Voice", system: "You understand loneliness and belonging. You speak about the human need for the right room and the right people. 3-4 short paragraphs." },
+  action:   { name: "The Pragmatist Voice", system: "You are direct and action-oriented. Break the unlived thing into smallest possible first move. 3 paragraphs with one concrete action." }
+};
+
+function getFacultyVoice(node) {
+  if(node.type === 'action') return FACULTY_VOICES.action;
+  return FACULTY_VOICES[node.domain] || FACULTY_VOICES.purpose;
+}
+
+// ── SESSION ──
+var SESSION_ID = null;
+var facultyCache = {}; // node_id -> {voice, response} — persists for whole browser session
+
+function generateSessionId() {
+  var now = new Date();
+  var pad = function(n){ return n < 10 ? '0'+n : n; };
+  return 'initialization_' + now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+}
+
+function saveSession(archetype, portrait, graph, reflect) {
+  SESSION_ID = SESSION_ID || generateSessionId();
+  var payload = {
+    session_id:    SESSION_ID,
+    archetype_name: archetype.name,
+    archetype_id:  archetype.id,
+    archetype_rare: archetype.rare,
+    portrait:      portrait,
+    graph:         graph,
+    reflect:       reflect,
+    answers:       answers,
+    faculty_responses: facultyCache,
+    created_at:    new Date().toISOString()
+  };
+  fetch('/api/session/save', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  }).then(function(r){ return r.json(); }).then(function(d){
+    console.log('[Session saved]', d.session_id);
+    var el = document.getElementById('session-badge');
+    if(el) el.textContent = '✦ Saved: ' + d.session_id;
+  });
+}
+
+function openNodePanel(node) {
+  var panel = document.getElementById('node-panel');
+  var inner = document.getElementById('panel-inner');
+  var typeLabel = node.type === 'leaf' ? 'Unlived Dream' : node.type === 'action' ? 'A Way Forward' : 'Your Path';
+
+  var html = '<p class="panel-type">' + typeLabel + '</p>';
+  html += '<h2 class="panel-title">' + node.label + '</h2>';
+  if(node.source_quote) html += '<p class="panel-quote">"' + node.source_quote + '"</p>';
+  if(node.direction) html += '<p class="panel-content" style="margin-bottom:20px">' + node.direction + '</p>';
+
+  // Check cache first — show immediately if already fetched this session
+  if(facultyCache[node.id]) {
+    var cached = facultyCache[node.id];
+    html += '<div class="faculty-voice"><p class="faculty-label">' + cached.voice + ' speaks <span style="font-size:8px;opacity:0.4;margin-left:8px;">cached</span></p>';
+    cached.response.split('\n\n').forEach(function(p){ if(p.trim()) html += '<p class="faculty-text">'+p.trim()+'</p>'; });
+    html += '</div>';
+    inner.innerHTML = html;
+    panel.classList.add('open');
+    return;
+  }
+
+  // Find voice name for loading label
+  var voiceNames = {creative:"The Artist Voice",career:"The Strategist Voice",purpose:"The Socratic Voice",identity:"The Mirror Voice",relationship:"The Connector Voice",action:"The Pragmatist Voice"};
+  var vname = node.type === 'action' ? voiceNames.action : (voiceNames[node.domain] || voiceNames.purpose);
+  html += '<p class="panel-loading" id="panel-loading">Calling ' + vname + '...</p>';
+  html += '<div id="panel-response"></div>';
+  inner.innerHTML = html;
+  panel.classList.add('open');
+
+  fetch('/api/faculty', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({node: node, answers: answers, session_id: SESSION_ID})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
+    var loadingEl = document.getElementById('panel-loading');
+    var responseEl = document.getElementById('panel-response');
+    if(!loadingEl || !responseEl) return;
+    loadingEl.style.display = 'none';
+    var txt = data.response || 'The mentor is gathering thoughts.';
+    // Cache it
+    facultyCache[node.id] = {voice: data.voice, response: txt};
+    // Update session file with cached response
+    if(SESSION_ID) {
+      fetch('/api/session/save', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({session_id: SESSION_ID, faculty_responses: facultyCache})
+      });
+    }
+    var rhtml = '<div class="faculty-voice"><p class="faculty-label">' + data.voice + ' speaks</p>';
+    txt.split('\n\n').forEach(function(p){ if(p.trim()) rhtml += '<p class="faculty-text">'+p.trim()+'</p>'; });
+    rhtml += '</div>';
+    responseEl.innerHTML = rhtml;
+  })
+  .catch(function(e){
+    var el = document.getElementById('panel-loading');
+    if(el) el.textContent = 'Error reaching mentor. Try again.';
+  });
+}
+
+function closePanel() {
+  document.getElementById('node-panel').classList.remove('open');
+}
+
+function openChatPanel() {
+  window.open('/chat?session=' + (SESSION_ID || ''), '_blank');
+}
+
+// ── FALLBACK GRAPH ──
+function getFallbackGraph() {
+  return {
+    root: { id: "root", label: "Who You Are Now", sublabel: "The one who keeps searching", type: "root" },
+    branches: [
+      { id: "b1", label: "Creative Self", type: "branch", color_key: "rose" },
+      { id: "b2", label: "Purpose Work", type: "branch", color_key: "teal" },
+      { id: "b3", label: "The People", type: "branch", color_key: "violet" }
+    ],
+    leaves: [
+      { id: "l1", label: "The film never made", parent: "b1", type: "leaf", source_quote: "I wanted to tell stories nobody was telling", domain: "creative" },
+      { id: "l2", label: "The creative project", parent: "b1", type: "leaf", source_quote: "I had this idea but kept waiting", domain: "creative" },
+      { id: "l3", label: "The company not started", parent: "b2", type: "leaf", source_quote: "I kept waiting to feel ready", domain: "career" },
+      { id: "l4", label: "The work that mattered", parent: "b2", type: "leaf", source_quote: "I wanted to actually change something", domain: "purpose" },
+      { id: "l5", label: "Finding your people", parent: "b3", type: "leaf", source_quote: "I have never had the right collaborators", domain: "relationship" }
+    ],
+    actions: [
+      { id: "a1", label: "Make one short film", parent: "l1", type: "action", direction: "Start with 3 minutes. Equipment is irrelevant. The story is not." },
+      { id: "a2", label: "Show the rough version", parent: "l2", type: "action", direction: "Find one person who will not soften their reaction." },
+      { id: "a3", label: "Write the one-pager", parent: "l3", type: "action", direction: "The company starts as a document. Write it this week." },
+      { id: "a4", label: "Name what matters", parent: "l4", type: "action", direction: "Define the one problem you would work on for free." },
+      { id: "a5", label: "Describe who you need", parent: "l5", type: "action", direction: "Write 3 qualities your collaborator would have. Then find them." }
+    ]
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ROADMAP — grass / sky / winding road / dog companion
+// ═══════════════════════════════════════════════════════════════
+var ROADMAP_STAGE_DEFS = [
+  { id:'s1', icon:'🌱', label:'The Seed', color:'#5a9e6f', ring:'#34d399',
+    description:"This is where you are: aware but not yet moving. The seed of what you are becoming has been planted by every answer you just gave. You already know more than you think.",
+    action:"Write one sentence today that describes the person you are growing into. Not who you are now, but who you are becoming." },
+  { id:'s2', icon:'🔍', label:'Self-Recognition', color:'#3aada8', ring:'#67e8f9',
+    description:"The hardest stage: seeing yourself clearly without flinching. What you shared today required honesty most people avoid. You have named things that others keep in the shadows.",
+    action:"Share one thing you discovered about yourself today with someone you trust, without softening it." },
+  { id:'s3', icon:'🔥', label:'The Fire', color:'#e07b39', ring:'#fbbf24',
+    description:"Your anger at the world's injustice is not a problem to fix, it is a compass. What keeps you up at night is pointing directly at what you are here to address.",
+    action:"Spend 10 minutes writing about the injustice that matters most to you, and what a world without it would look like." },
+  { id:'s4', icon:'🛤️', label:'The Unlived Path', color:'#7c5cbf', ring:'#c4b5fd',
+    description:"Every door you did not walk through is still there. The version of you who did those things is not lost, it is waiting. Not to be resurrected, but to inform what you build next.",
+    action:"Pick one unlived dream and take the smallest possible first action. Not planning. Doing." },
+  { id:'s5', icon:'🤝', label:'Finding Your Room', color:'#c45c7a', ring:'#f9a8d4',
+    description:"The reason you have sometimes felt out of place is not a flaw in you. It is a clue. You need a specific kind of room with specific kinds of people who can meet you at your actual level.",
+    action:"Describe in writing the three qualities the people in your room would have. Not skills. Character." },
+  { id:'s6', icon:'🌟', label:'The Work', color:'#d4a843', ring:'#fde68a',
+    description:"This is what it has been building toward. The work that has your name on it. Not the job, the contribution. The thing you would still do if no one paid you and no one clapped.",
+    action:"Write a one-paragraph description of your life's work, as if it already exists and you are proud of it." }
+];
+var roadmapStagesCurrent = ROADMAP_STAGE_DEFS.map(function(s,i){ var c = {}; for(var k in s) c[k] = s[k]; c.unlocked = i===0; c.visited = false; return c; });
+var dogX = 0, dogY = 0, dogTargetX = 0, dogTargetY = 0, dogFrame = 0;
+var roadmapAnimFrame = null;
+var stagePositions = [];
+
+function buildRoadmapStages(archetype, portrait) {
+  roadmapStagesCurrent[0].description = "This is where you are now, " + archetype.name + ". " + ROADMAP_STAGE_DEFS[0].description;
+  roadmapStagesCurrent[5].label = 'Your Work';
+  roadmapStagesCurrent[5].description = portrait.first_step + ' ' + ROADMAP_STAGE_DEFS[5].description;
+}
+
+function renderRoadmap() {
+  var svg = document.getElementById('roadmap-svg');
+  if(!svg) return;
+  var W = svg.parentElement.offsetWidth || 900;
+  var H = 780;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.innerHTML = '';
+  if(roadmapAnimFrame) { cancelAnimationFrame(roadmapAnimFrame); roadmapAnimFrame = null; }
+
+  // defs (sky + grass gradient)
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var defs = document.createElementNS(SVGNS,'defs');
+  var skyGrad = document.createElementNS(SVGNS,'linearGradient');
+  skyGrad.setAttribute('id','skyGrad'); skyGrad.setAttribute('x1','0%'); skyGrad.setAttribute('y1','0%'); skyGrad.setAttribute('x2','0%'); skyGrad.setAttribute('y2','100%');
+  var s1 = document.createElementNS(SVGNS,'stop'); s1.setAttribute('offset','0%'); s1.setAttribute('stop-color','#87ceeb');
+  var s2 = document.createElementNS(SVGNS,'stop'); s2.setAttribute('offset','100%'); s2.setAttribute('stop-color','#c8e6c9');
+  skyGrad.appendChild(s1); skyGrad.appendChild(s2); defs.appendChild(skyGrad);
+  var grassGrad = document.createElementNS(SVGNS,'linearGradient');
+  grassGrad.setAttribute('id','grassGrad'); grassGrad.setAttribute('x1','0%'); grassGrad.setAttribute('y1','0%'); grassGrad.setAttribute('x2','0%'); grassGrad.setAttribute('y2','100%');
+  var g1 = document.createElementNS(SVGNS,'stop'); g1.setAttribute('offset','0%'); g1.setAttribute('stop-color','#66bb6a');
+  var g2 = document.createElementNS(SVGNS,'stop'); g2.setAttribute('offset','100%'); g2.setAttribute('stop-color','#388e3c');
+  grassGrad.appendChild(g1); grassGrad.appendChild(g2); defs.appendChild(grassGrad);
+  svg.appendChild(defs);
+
+  // Sky
+  var skyRect = document.createElementNS(SVGNS,'rect');
+  skyRect.setAttribute('x','0'); skyRect.setAttribute('y','0'); skyRect.setAttribute('width',W); skyRect.setAttribute('height','200'); skyRect.setAttribute('fill','url(#skyGrad)');
+  svg.appendChild(skyRect);
+
+  // Clouds
+  [[W*0.1,40,60,20],[W*0.4,25,80,25],[W*0.7,50,55,18],[W*0.85,30,70,22]].forEach(function(c){
+    var cx=c[0], cy=c[1], rx=c[2], ry=c[3];
+    var cloud = document.createElementNS(SVGNS,'ellipse');
+    cloud.setAttribute('cx',cx); cloud.setAttribute('cy',cy); cloud.setAttribute('rx',rx); cloud.setAttribute('ry',ry); cloud.setAttribute('fill','rgba(255,255,255,0.75)');
+    svg.appendChild(cloud);
+    var cloud2 = document.createElementNS(SVGNS,'ellipse');
+    cloud2.setAttribute('cx', cx+rx*0.4); cloud2.setAttribute('cy', cy-ry*0.5); cloud2.setAttribute('rx', rx*0.65); cloud2.setAttribute('ry', ry*0.7); cloud2.setAttribute('fill','rgba(255,255,255,0.75)');
+    svg.appendChild(cloud2);
+  });
+
+  // Sun
+  var sun = document.createElementNS(SVGNS,'circle');
+  sun.setAttribute('cx', W-80); sun.setAttribute('cy','60'); sun.setAttribute('r','38'); sun.setAttribute('fill','#fff176'); sun.setAttribute('opacity','0.9');
+  svg.appendChild(sun);
+
+  // Grass
+  var grassRect = document.createElementNS(SVGNS,'rect');
+  grassRect.setAttribute('x','0'); grassRect.setAttribute('y','180'); grassRect.setAttribute('width',W); grassRect.setAttribute('height', H-180); grassRect.setAttribute('fill','url(#grassGrad)');
+  svg.appendChild(grassRect);
+
+  // Grass blade texture
+  for(var gx=0; gx<W; gx+=18) {
+    var blade = document.createElementNS(SVGNS,'line');
+    var bh = 8 + Math.random()*10;
+    blade.setAttribute('x1', gx+(Math.random()*8-4)); blade.setAttribute('y1', 190);
+    blade.setAttribute('x2', gx+(Math.random()*12-6)); blade.setAttribute('y2', 190-bh);
+    blade.setAttribute('stroke','rgba(45,107,36,' + (0.3+Math.random()*0.3) + ')');
+    blade.setAttribute('stroke-width','2');
+    svg.appendChild(blade);
+  }
+
+  // ── Winding path through 6 stages (3 rows x 2 cols, snake) ──
+  var N = roadmapStagesCurrent.length;
+  stagePositions = [];
+  var rows = 3, cols = 2;
+  var marginX = 120;
+  var cellW = (W - marginX*2) / cols;
+  var cellH = (H - 100 - 220) / rows;
+  for(var i=0; i<N; i++) {
+    var row = Math.floor(i/cols);
+    var col = (row%2===0) ? (i%cols) : (cols-1-(i%cols));
+    var px = marginX + col*cellW + cellW/2;
+    var py = 280 + row*cellH + cellH/2;
+    stagePositions.push({x:px, y:py});
+  }
+
+  // Road (thick brown band)
+  var roadPath = document.createElementNS(SVGNS,'path');
+  var d = 'M ' + stagePositions[0].x + ' ' + stagePositions[0].y;
+  for(var j=1; j<stagePositions.length; j++) {
+    var prev = stagePositions[j-1], cur = stagePositions[j];
+    var mx = (prev.x+cur.x)/2, my = (prev.y+cur.y)/2;
+    d += ' Q ' + mx + ' ' + prev.y + ' ' + mx + ' ' + my + ' Q ' + mx + ' ' + cur.y + ' ' + cur.x + ' ' + cur.y;
+  }
+  roadPath.setAttribute('d', d);
+  roadPath.setAttribute('fill','none'); roadPath.setAttribute('stroke','#8b7355'); roadPath.setAttribute('stroke-width','52');
+  roadPath.setAttribute('stroke-linecap','round'); roadPath.setAttribute('stroke-linejoin','round');
+  svg.appendChild(roadPath);
+
+  var roadEdge = roadPath.cloneNode(); roadEdge.setAttribute('stroke','#a08060'); roadEdge.setAttribute('stroke-width','48');
+  svg.appendChild(roadEdge);
+
+  var roadLine = roadPath.cloneNode();
+  roadLine.setAttribute('stroke','rgba(255,255,255,0.3)'); roadLine.setAttribute('stroke-width','3');
+  roadLine.setAttribute('stroke-dasharray','18,14');
+  svg.appendChild(roadLine);
+
+  // Trees alongside road
+  stagePositions.forEach(function(pos, idx){
+    if(idx < N-1) {
+      var next = stagePositions[idx+1];
+      var tmx = (pos.x+next.x)/2, tmy = (pos.y+next.y)/2;
+      [[tmx-85,tmy-35],[tmx+85,tmy+25]].forEach(function(t){
+        var tx=t[0], ty=t[1];
+        if(tx>40 && tx<W-40 && ty>210 && ty<H-30) {
+          var trunk = document.createElementNS(SVGNS,'rect');
+          trunk.setAttribute('x', tx-5); trunk.setAttribute('y', ty); trunk.setAttribute('width','10'); trunk.setAttribute('height','28'); trunk.setAttribute('fill','#5d4037');
+          svg.appendChild(trunk);
+          var foliage = document.createElementNS(SVGNS,'circle');
+          foliage.setAttribute('cx',tx); foliage.setAttribute('cy',ty-12); foliage.setAttribute('r','22'); foliage.setAttribute('fill','#2e7d32');
+          svg.appendChild(foliage);
+          var foliage2 = document.createElementNS(SVGNS,'circle');
+          foliage2.setAttribute('cx',tx+8); foliage2.setAttribute('cy',ty-20); foliage2.setAttribute('r','16'); foliage2.setAttribute('fill','#388e3c');
+          svg.appendChild(foliage2);
+        }
+      });
+    }
+  });
+
+  // Stage nodes
+  roadmapStagesCurrent.forEach(function(stage, i) {
+    var pos = stagePositions[i];
+    var x = pos.x, y = pos.y;
+    var g = document.createElementNS(SVGNS,'g');
+    g.setAttribute('class','roadmap-stage');
+    g.style.cursor = 'pointer';
+
+    var ring = document.createElementNS(SVGNS,'circle');
+    ring.setAttribute('cx',x); ring.setAttribute('cy',y); ring.setAttribute('r','48');
+    ring.setAttribute('fill','none');
+    ring.setAttribute('stroke', stage.unlocked ? stage.ring : 'rgba(255,255,255,0.12)');
+    ring.setAttribute('stroke-width','2.5');
+    ring.setAttribute('stroke-dasharray', stage.unlocked ? 'none' : '6 4');
+    ring.setAttribute('opacity', stage.unlocked ? '0.6' : '0.35');
+    if(stage.unlocked && !stage.visited) ring.style.animation = 'rmPulseRing 2s ease-in-out infinite';
+    g.appendChild(ring);
+
+    var circle = document.createElementNS(SVGNS,'circle');
+    circle.setAttribute('cx',x); circle.setAttribute('cy',y); circle.setAttribute('r','34');
+    circle.setAttribute('fill', stage.unlocked ? stage.color : '#3a3a4a');
+    circle.setAttribute('stroke', stage.unlocked ? stage.ring : '#555');
+    circle.setAttribute('stroke-width','3');
+    circle.setAttribute('opacity', stage.unlocked ? '1' : '0.5');
+    g.appendChild(circle);
+
+    var icon = document.createElementNS(SVGNS,'text');
+    icon.setAttribute('x',x); icon.setAttribute('y', y+2); icon.setAttribute('text-anchor','middle');
+    icon.setAttribute('dominant-baseline','middle'); icon.setAttribute('font-size','26');
+    icon.textContent = stage.unlocked ? stage.icon : '🔒';
+    g.appendChild(icon);
+
+    if(stage.visited) {
+      var check = document.createElementNS(SVGNS,'text');
+      check.setAttribute('x', x+24); check.setAttribute('y', y-24); check.setAttribute('font-size','18');
+      check.setAttribute('fill','#34d399'); check.textContent = '✓';
+      g.appendChild(check);
+    }
+
+    var label = document.createElementNS(SVGNS,'text');
+    label.setAttribute('x',x); label.setAttribute('y', y+54); label.setAttribute('text-anchor','middle');
+    label.setAttribute('font-family','Space Mono, monospace'); label.setAttribute('font-size','11');
+    label.setAttribute('fill', stage.unlocked ? stage.ring : '#666'); label.setAttribute('letter-spacing','1');
+    label.textContent = stage.label;
+    g.appendChild(label);
+
+    var numBg = document.createElementNS(SVGNS,'circle');
+    numBg.setAttribute('cx', x-28); numBg.setAttribute('cy', y-28); numBg.setAttribute('r','11');
+    numBg.setAttribute('fill', stage.unlocked ? stage.color : '#2a2a3a');
+    numBg.setAttribute('stroke','#1a1a2a'); numBg.setAttribute('stroke-width','2');
+    g.appendChild(numBg);
+    var num = document.createElementNS(SVGNS,'text');
+    num.setAttribute('x', x-28); num.setAttribute('y', y-28); num.setAttribute('text-anchor','middle');
+    num.setAttribute('dominant-baseline','middle'); num.setAttribute('font-size','9');
+    num.setAttribute('fill','#fff'); num.setAttribute('font-family','Space Mono, monospace'); num.setAttribute('font-weight','bold');
+    num.textContent = i+1;
+    g.appendChild(num);
+
+    (function(idx){ g.addEventListener('click', function(){ clickStage(idx); }); })(i);
+    svg.appendChild(g);
+  });
+
+  // ── DOG COMPANION (on-roadmap) ──
+  var dogEl = document.createElementNS(SVGNS,'g');
+  dogEl.setAttribute('id','roadmap-dog');
+  // Only initialize dog position on the first render; keep it across re-renders
+  // so clicking a stage doesn't teleport the dog back to stage 1.
+  if(dogX === 0 && dogY === 0) {
+    dogX = stagePositions[0].x;
+    dogY = stagePositions[0].y - 70;
+    dogTargetX = dogX; dogTargetY = dogY;
+  }
+  dogEl.setAttribute('transform','translate(' + dogX + ',' + dogY + ')');
+
+  var shadow = document.createElementNS(SVGNS,'ellipse');
+  shadow.setAttribute('cx','0'); shadow.setAttribute('cy','24'); shadow.setAttribute('rx','18'); shadow.setAttribute('ry','5'); shadow.setAttribute('fill','rgba(0,0,0,0.2)');
+  dogEl.appendChild(shadow);
+
+  var body = document.createElementNS(SVGNS,'ellipse');
+  body.setAttribute('cx','0'); body.setAttribute('cy','10'); body.setAttribute('rx','18'); body.setAttribute('ry','13'); body.setAttribute('fill','#c8a882');
+  dogEl.appendChild(body);
+
+  var head = document.createElementNS(SVGNS,'circle');
+  head.setAttribute('cx','14'); head.setAttribute('cy','-4'); head.setAttribute('r','12'); head.setAttribute('fill','#c8a882');
+  dogEl.appendChild(head);
+
+  var ear = document.createElementNS(SVGNS,'ellipse');
+  ear.setAttribute('cx','20'); ear.setAttribute('cy','-12'); ear.setAttribute('rx','6'); ear.setAttribute('ry','8'); ear.setAttribute('fill','#a07850');
+  dogEl.appendChild(ear);
+
+  var eye = document.createElementNS(SVGNS,'circle');
+  eye.setAttribute('cx','20'); eye.setAttribute('cy','-6'); eye.setAttribute('r','3'); eye.setAttribute('fill','#1a1010');
+  dogEl.appendChild(eye);
+  var eyeShine = document.createElementNS(SVGNS,'circle');
+  eyeShine.setAttribute('cx','21.5'); eyeShine.setAttribute('cy','-7'); eyeShine.setAttribute('r','1'); eyeShine.setAttribute('fill','white');
+  dogEl.appendChild(eyeShine);
+
+  var nose = document.createElementNS(SVGNS,'ellipse');
+  nose.setAttribute('cx','27'); nose.setAttribute('cy','-2'); nose.setAttribute('rx','3'); nose.setAttribute('ry','2'); nose.setAttribute('fill','#3d1010');
+  dogEl.appendChild(nose);
+
+  var tail = document.createElementNS(SVGNS,'path');
+  tail.setAttribute('id','dog-tail');
+  tail.setAttribute('d','M-15,5 Q-30,-8 -22,-18'); tail.setAttribute('fill','none');
+  tail.setAttribute('stroke','#a07850'); tail.setAttribute('stroke-width','5'); tail.setAttribute('stroke-linecap','round');
+  dogEl.appendChild(tail);
+
+  [[-8,18],[-2,20],[6,20],[12,18]].forEach(function(L){
+    var leg = document.createElementNS(SVGNS,'rect');
+    leg.setAttribute('x', L[0]-2); leg.setAttribute('y', L[1]); leg.setAttribute('width','5'); leg.setAttribute('height','9'); leg.setAttribute('fill','#a07850'); leg.setAttribute('rx','2');
+    dogEl.appendChild(leg);
+  });
+
+  svg.appendChild(dogEl);
+
+  function animateDog() {
+    var dx = dogTargetX - dogX;
+    var dy = dogTargetY - dogY;
+    var dist = Math.sqrt(dx*dx + dy*dy);
+    var speed = 3;
+    if(dist > speed) { dogX += (dx/dist)*speed; dogY += (dy/dist)*speed; }
+    dogFrame++;
+    var bounce = Math.sin(dogFrame*0.18) * 6;
+    var wagAngle = Math.sin(dogFrame*0.25) * 25;
+    var flip = dx < -2 ? 'scale(-1,1)' : 'scale(1,1)';
+    dogEl.setAttribute('transform', 'translate(' + dogX + ',' + (dogY - bounce) + ') ' + flip);
+    var tailEl = document.getElementById('dog-tail');
+    if(tailEl) tailEl.setAttribute('transform','rotate(' + wagAngle + ',-15,5)');
+    roadmapAnimFrame = requestAnimationFrame(animateDog);
+  }
+  animateDog();
+
+  // inject one-time keyframe
+  if(!document.getElementById('rm-pulse-style')) {
+    var s = document.createElement('style');
+    s.id = 'rm-pulse-style';
+    s.textContent = '@keyframes rmPulseRing { 0%,100%{opacity:0.4} 50%{opacity:0.85} }';
+    document.head.appendChild(s);
+  }
+}
+
+function clickStage(idx) {
+  var stage = roadmapStagesCurrent[idx];
+  if(!stage.unlocked) return;
+  stage.visited = true;
+  dogTargetX = stagePositions[idx].x;
+  dogTargetY = stagePositions[idx].y - 60;
+  if(idx+1 < roadmapStagesCurrent.length) roadmapStagesCurrent[idx+1].unlocked = true;
+  setTimeout(renderRoadmap, 220);
+
+  var inner = document.getElementById('stage-panel-inner');
+  inner.innerHTML =
+    '<p class="stage-panel-number">Stage ' + (idx+1) + ' of ' + roadmapStagesCurrent.length + '</p>' +
+    '<p class="stage-panel-title">' + stage.icon + ' ' + stage.label + '</p>' +
+    '<p class="stage-panel-content">' + stage.description + '</p>' +
+    '<div class="stage-panel-action">💡 <strong>Your action:</strong> ' + stage.action + '</div>';
+  document.getElementById('stage-panel').classList.add('open');
+}
+
+function closeStagePanel() {
+  document.getElementById('stage-panel').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PERSISTENT PET DOG — chrome-extension style prancing companion
+// ═══════════════════════════════════════════════════════════════
+(function initPetDog() {
+  var pet = document.getElementById('pet-dog');
+  if(!pet) return;
+  var bubble = document.getElementById('pet-bubble');
+
+  var state = {
+    x: window.innerWidth * 0.1,
+    targetX: window.innerWidth * 0.8,
+    mode: 'walking', // walking, idle, pranced
+    frame: 0,
+    idleUntil: 0,
+    speed: 0.6 + Math.random()*0.4,
+    facing: 1 // 1 = right, -1 = left
+  };
+
+  // pick a new wander target
+  function pickNewTarget() {
+    var maxX = Math.max(window.innerWidth - 80, 120);
+    state.targetX = 40 + Math.random() * maxX;
+    state.speed = 0.5 + Math.random() * 0.7;
+  }
+
+  // bubbles for flavor
+  var SAYINGS = ['woof!', '*wag wag*', 'hi!', 'prance!', 'sniff sniff', 'tail wiggle', 'bork!', '*zoomies*', 'good vibes'];
+  function showBubble(text) {
+    if(!bubble) return;
+    bubble.textContent = text;
+    bubble.classList.add('show');
+    setTimeout(function(){ bubble.classList.remove('show'); }, 1600);
+  }
+
+  // click to pet
+  pet.addEventListener('click', function(){
+    showBubble(SAYINGS[Math.floor(Math.random()*SAYINGS.length)]);
+    // do a little happy prance in place
+    state.mode = 'pranced';
+    state.frame = 0;
+    setTimeout(function(){
+      state.mode = 'walking';
+      pickNewTarget();
+    }, 1400);
+  });
+
+  function tick() {
+    state.frame++;
+
+    // decide behaviour transitions
+    if(state.mode === 'walking') {
+      var dx = state.targetX - state.x;
+      if(Math.abs(dx) < 2) {
+        // reached target, maybe idle
+        if(Math.random() < 0.5) {
+          state.mode = 'idle';
+          state.idleUntil = state.frame + 60 + Math.floor(Math.random()*120);
+        } else {
+          pickNewTarget();
+        }
+      } else {
+        state.facing = dx > 0 ? 1 : -1;
+        state.x += Math.sign(dx) * state.speed;
+      }
+    } else if(state.mode === 'idle') {
+      if(state.frame >= state.idleUntil) {
+        state.mode = 'walking';
+        pickNewTarget();
+        // occasional bubble
+        if(Math.random() < 0.25) showBubble(SAYINGS[Math.floor(Math.random()*SAYINGS.length)]);
+      }
+    }
+
+    // clamp x
+    state.x = Math.max(10, Math.min(state.x, window.innerWidth - 70));
+
+    // bounce + leg wiggle
+    var bounce = 0;
+    var legSwing = 0;
+    if(state.mode === 'walking') {
+      bounce = Math.sin(state.frame * 0.2) * 4;
+      legSwing = Math.sin(state.frame * 0.22) * 6;
+    } else if(state.mode === 'pranced') {
+      // exaggerated prance
+      bounce = Math.sin(state.frame * 0.4) * 10;
+      legSwing = Math.sin(state.frame * 0.42) * 10;
+    } else {
+      // idle — gentle breath
+      bounce = Math.sin(state.frame * 0.05) * 1.5;
+    }
+
+    // apply transforms
+    pet.style.left = state.x + 'px';
+    pet.style.transform = 'translateY(' + (-bounce) + 'px)';
+    pet.classList.toggle('flipped', state.facing === -1);
+
+    // animate legs by directly toggling rects
+    var bl = document.getElementById('pet-leg-bl');
+    var br = document.getElementById('pet-leg-br');
+    var fl = document.getElementById('pet-leg-fl');
+    var fr = document.getElementById('pet-leg-fr');
+    if(bl && br && fl && fr) {
+      // alternating pairs
+      bl.setAttribute('y', 46 + legSwing);
+      br.setAttribute('y', 46 - legSwing);
+      fl.setAttribute('y', 46 - legSwing);
+      fr.setAttribute('y', 46 + legSwing);
+    }
+    // wag tail
+    var tail = document.getElementById('pet-tail');
+    if(tail) {
+      var wag = Math.sin(state.frame * 0.28) * 14;
+      tail.setAttribute('transform', 'rotate(' + wag + ' 12 34)');
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  // occasional spontaneous bubbles
+  setInterval(function(){
+    if(Math.random() < 0.15 && state.mode === 'walking') {
+      showBubble(SAYINGS[Math.floor(Math.random()*SAYINGS.length)]);
+    }
+  }, 8000);
+
+  // window resize — re-pick target if off-screen
+  window.addEventListener('resize', function(){
+    if(state.x > window.innerWidth - 80) state.x = window.innerWidth - 80;
+    if(state.targetX > window.innerWidth - 80) state.targetX = window.innerWidth * 0.3;
+  });
+
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

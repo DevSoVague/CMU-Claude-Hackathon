@@ -15,10 +15,6 @@ Masters in Artificial Intelligence Engineering - Biomedical Engineering, Carnegi
 
 Google Drive Link to the demo video: https://drive.google.com/file/d/1J3CwH_R8HaT_TTFVMChV4EAe5dPpBXzN/view
 
-<img width="941" height="711" alt="image" src="https://github.com/user-attachments/assets/9ebb4d08-590f-4485-99d9-952ef4cbb45f" />
-
-
-
 ---
 
 ## What Is This
@@ -411,10 +407,10 @@ Browser (index.html)
     v
 Flask Server (server.py)
     |
-    |-- /api/claude ---------> CMU AI Gateway --> Claude Sonnet 4
+    |-- /api/claude ---------> Anthropic API --> Claude Sonnet 4
     |                          (extract, match, portrait, graph, brief)
     |
-    |-- /api/faculty --------> CMU AI Gateway --> Claude Sonnet 4
+    |-- /api/faculty --------> Anthropic API --> Claude Sonnet 4
     |                          (6 specialist voice responses, cached per node)
     |
     |-- /api/rag/query ------> Milvus Vector Store
@@ -436,7 +432,7 @@ Flask Server (server.py)
 | `GET /` | | Serves `index.html` - the main questionnaire |
 | `GET /chat` | | Serves `chat.html` - the RAG mentor chatbot |
 | `GET /dev` | | Serves `dev.html` - the indexer and admin console |
-| `POST /api/claude` | JSON | Proxies calls to CMU gateway |
+| `POST /api/claude` | JSON | Proxies calls to the Anthropic Messages API |
 | `POST /api/scrape` | JSON | Scrapes GitHub API and any provided URLs |
 | `POST /api/websearch` | JSON | DuckDuckGo search. Returns top 5 results. No key needed. |
 | `POST /api/faculty` | JSON | Faculty agent. Takes node + answers + session_id. Returns voice + response. Persists to session. |
@@ -453,7 +449,7 @@ Flask Server (server.py)
 
 ## Running Locally
 
-**Requirements:** Python 3.9+, pip
+**Requirements:** Python 3.9+, pip, and an Anthropic API key (`ANTHROPIC_API_KEY`)
 
 ```bash
 # Install core dependencies
@@ -462,9 +458,7 @@ pip install flask requests
 # Optional: for RAG features
 pip install pymilvus sentence-transformers pypdf2
 
-# Set your API key (see .env.example; any Anthropic Messages API key works with LLM_URL)
-cp .env.example .env   # then edit, or export the variables directly
-export CMU_API_KEY=your-key-here
+# Required: export ANTHROPIC_API_KEY in your shell (the server exits if it is unset)
 
 # Run
 python server.py

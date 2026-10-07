@@ -10,11 +10,11 @@ os.environ["OMP_NUM_THREADS"] = "4"
 app = Flask(__name__, static_folder='.')
 app.secret_key = os.environ.get("FLASK_SECRET") or os.urandom(24)
 
-API_KEY      = os.environ.get("CMU_API_KEY")
+API_KEY      = os.environ.get("ANTHROPIC_API_KEY")
 if not API_KEY:
-    raise SystemExit("Set CMU_API_KEY (see .env.example) before starting the server.")
-CMU_URL      = os.environ.get("LLM_URL", "https://ai-gateway.andrew.cmu.edu/v1/messages")
-MODEL        = "claude-sonnet-4-20250514-v1:0"
+    raise SystemExit("Set the ANTHROPIC_API_KEY environment variable before starting the server.")
+ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+MODEL        = "claude-sonnet-4-20250514"
 SESSIONS_DIR = Path("./sessions")
 SESSIONS_DIR.mkdir(exist_ok=True)
 Path("./uploads_tmp").mkdir(exist_ok=True)
@@ -35,7 +35,7 @@ def get_indexer():
     return _indexer
 
 def claude_call(messages, max_tokens=2000):
-    r = http_requests.post(CMU_URL, headers={
+    r = http_requests.post(ANTHROPIC_URL, headers={
         "Content-Type": "application/json",
         "x-api-key": API_KEY,
         "anthropic-version": "2023-06-01"

@@ -836,7 +836,7 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-// ── API CALL via CMU gateway with Anthropic fallback ──
+// ── API CALL via the local /api/claude proxy (Anthropic Messages API) ──
 async function callClaude(prompt, systemPrompt, maxTokens, callback) {
   var content = systemPrompt ? systemPrompt + '\n\n' + prompt : prompt;
   var txt;

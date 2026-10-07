@@ -1,2 +1,10 @@
+# Core app (questionnaire, faculty voices, sessions): server.py
 flask>=3.0
 requests>=2.31
+
+# RAG chat (/chat) and indexing console (/dev): indexer.py
+# Smoke-tested with pymilvus 3.0.2, milvus-lite, sentence-transformers, torch 2.14 (CPU)
+pymilvus[milvus_lite]>=2.4.2,<3.1   # ORM Collection API is removed in pymilvus 3.1
+sentence-transformers>=2.7
+PyPDF2>=3.0
+numpy>=1.26

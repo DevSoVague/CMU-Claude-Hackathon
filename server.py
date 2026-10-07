@@ -27,8 +27,9 @@ def get_indexer():
     if _indexer is None:
         try:
             from indexer import PDFIndexer
-            _indexer = PDFIndexer()
-            _indexer.load_index("./rag_index")
+            ix = PDFIndexer()
+            ix.load_index("./rag_index")
+            _indexer = ix
             print("[RAG] Indexer loaded")
         except Exception as e:
             print(f"[RAG] Could not load: {e}")

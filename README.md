@@ -449,27 +449,41 @@ Flask Server (server.py)
 
 ## Running Locally
 
-**Requirements:** Python 3.9+, pip, and an Anthropic API key (`ANTHROPIC_API_KEY`)
+**Requirements:** Python 3.10+ and an Anthropic API key. macOS or Linux for the RAG features (Milvus Lite has no Windows build; on Windows point `MILVUS_URI` at a Milvus server instead).
 
 ```bash
-# Install core dependencies
-pip install flask requests
+git clone https://github.com/DevSoVague/CMU-Claude-Hackathon.git
+cd CMU-Claude-Hackathon
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt     # flask + requests for the core app; pymilvus, sentence-transformers, PyPDF2 for RAG
 
-# Optional: for RAG features
-pip install pymilvus sentence-transformers pypdf2
-
-# Required: export ANTHROPIC_API_KEY in your shell (the server exits if it is unset)
-
-# Run
-python server.py
+export ANTHROPIC_API_KEY=...        # required, the server exits if it is unset
+python server.py                    # http://localhost:8501
 ```
 
 Open:
 - `http://localhost:8501` - the interview and knowledge graph
-- `http://localhost:8501/chat` - the continuing conversation
-- `http://localhost:8501/dev` - the counselor and parent upload interface
+- `http://localhost:8501/chat` - the continuing conversation (RAG mentor)
+- `http://localhost:8501/dev` - the counselor and parent upload interface (index PDFs, clear, export)
 
-Milvus is optional. The questionnaire and chat work without it. The RAG indexer module (`indexer.py`) is not included in this repo, so `/chat` RAG and `/dev` indexing degrade gracefully. RAG activates only after you index documents via `/dev`.
+**End-to-end RAG flow.** Upload PDFs on `/dev` (choose index type HNSW, IVF_PQ or DiskANN, chunk size and a paper type). `indexer.py` extracts text with PyPDF2, splits it into overlapping word windows, embeds each chunk locally with sentence-transformers, and stores it in Milvus. The index persists in `./rag_index/` and is reloaded automatically on the next start. `/chat` then retrieves the top chunks for each question and asks Claude for a grounded, cited answer (with an optional critique-and-revise pass). If nothing is indexed yet, `/api/rag/stats` reports `not_loaded` and the chat falls back to plain Claude.
+
+By default Milvus runs embedded (Milvus Lite, a single file at `./rag_index/milvus_lite.db`), so no database server is needed. Milvus Lite always uses a flat index; the HNSW / IVF_PQ / DiskANN choice takes effect when you point `MILVUS_URI` at a Milvus server, for example Milvus Standalone in Docker.
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | yes | Claude calls (app pipeline, faculty voices, RAG answers) |
+| `ANTHROPIC_MODEL` | no | Model for RAG answers (default `claude-sonnet-4-20250514`, same as the app) |
+| `MILVUS_URI` | no | Milvus server, e.g. `http://localhost:19530` (default: embedded Milvus Lite file) |
+| `MILVUS_TOKEN` | no | Token for an auth-enabled Milvus or Zilliz Cloud |
+| `MILVUS_COLLECTION` | no | Collection name (default `latent_map_rag`) |
+| `EMBED_MODEL` | no | sentence-transformers model (default `sentence-transformers/all-MiniLM-L6-v2`, downloaded on first use) |
+| `EMBED_DEVICE` | no | `cpu` (default), `mps` or `cuda` |
+| `FLASK_SECRET` | no | Flask session secret (random per start if unset) |
+
+Note: the indexer module used at the hackathon was never committed, so `indexer.py` in this repo is a rebuild that implements the same interface `server.py` calls (Milvus storage, HNSW / IVF_PQ / DiskANN options, npz export) with local embeddings and Claude answers.
+
+Runtime folders (`sessions/`, `uploads_tmp/`, `exports/`, `rag_index/`) are created on start and git-ignored.
 
 ---
 
